@@ -91,3 +91,44 @@
 
 
 
+
+/* =========================================
+   ADMIN RICH TEXT EDITOR
+   ========================================= */
+
+.admin-rich-editor .ql-toolbar {
+  border: 0;
+  border-bottom: 2px solid #000;
+  background: #f5f5f0;
+  padding: 10px;
+}
+
+.admin-rich-editor .ql-container {
+  border: 0;
+  min-height: 150px;
+  font-family: inherit;
+}
+
+.admin-rich-editor .ql-editor {
+  min-height: 150px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.admin-rich-editor .ql-editor.ql-blank::before {
+  color: rgba(0, 0, 0, 0.35);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.admin-rich-editor .ql-toolbar button:hover,
+.admin-rich-editor .ql-toolbar button.ql-active {
+  background: #ffde4d;
+  border-radius: 5px;
+}
+
+.admin-rich-editor .ql-picker-label:hover,
+.admin-rich-editor .ql-picker-item:hover {
+  color: #000;
+}
