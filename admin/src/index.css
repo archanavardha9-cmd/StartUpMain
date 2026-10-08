@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #000000;
+    background-color: #FFFDF9;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.02em;
+    color: #000000;
+    font-weight: 800;
+  }
+}
+
+/* Neo-Brutalist High-Contrast Utility Classes */
+.brutal-card {
+  background-color: #FFFFFF;
+  border: 2px solid #000000;
+  border-radius: 16px;
+  box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.brutal-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.brutal-btn-primary {
+  background-color: #FFDE4D;
+  color: #000000;
+  border: 2px solid #000000;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0px 0px rgba(0, 0, 0, 1);
+  font-weight: 800;
+  transition: all 0.15s ease-in-out;
+}
+
+.brutal-btn-primary:hover {
+  transform: translate(-1.5px, -1.5px);
+  box-shadow: 4.5px 4.5px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.brutal-btn-primary:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.brutal-btn-secondary {
+  background-color: #A3E635;
+  color: #000000;
+  border: 2px solid #000000;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0px 0px rgba(0, 0, 0, 1);
+  font-weight: 800;
+  transition: all 0.15s ease-in-out;
+}
+
+.brutal-btn-secondary:hover {
+  transform: translate(-1.5px, -1.5px);
+  box-shadow: 4.5px 4.5px 0px 0px rgba(0, 0, 0, 1);
+}
+
+.brutal-btn-secondary:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px 0px rgba(0, 0, 0, 1);
+}
+
+/* Infinite Horizontal Marquee Carousel */
+@keyframes marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 35s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+
+
+
+/* =========================================
+   ADMIN RICH TEXT EDITOR
+   ========================================= */
+
+.admin-rich-editor .ql-toolbar {
+  border: 0;
+  border-bottom: 2px solid #000;
+  background: #f5f5f0;
+  padding: 10px;
+}
+
+.admin-rich-editor .ql-container {
+  border: 0;
+  min-height: 150px;
+  font-family: inherit;
+}
+
+.admin-rich-editor .ql-editor {
+  min-height: 150px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.admin-rich-editor .ql-editor.ql-blank::before {
+  color: rgba(0, 0, 0, 0.35);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.admin-rich-editor .ql-toolbar button:hover,
+.admin-rich-editor .ql-toolbar button.ql-active {
+  background: #ffde4d;
+  border-radius: 5px;
+}
+
+.admin-rich-editor .ql-picker-label:hover,
+.admin-rich-editor .ql-picker-item:hover {
+  color: #000;
+}
