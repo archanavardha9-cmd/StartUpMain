@@ -106,7 +106,7 @@ const defaultHeader = {
 // DEFAULT FOOTER SETTINGS
 // ============================================================
 
-const defaultFooter = {
+const defaultFooter = { 
   brandTitle: 'Startup Cafe',
 
   description:
@@ -146,8 +146,6 @@ const defaultFooter = {
     'Startup Cafe. All rights reserved.',
 
   footerBackground: '#FFFDF9',
-
-  footerTextColor: '#000000',
 
   brandColor: '#000000',
 
@@ -1165,20 +1163,6 @@ const SettingsEditor = () => {
                 onChange={(value) =>
                   updateFooter(
                     'footerBackground',
-                    value
-                  )
-                }
-              />
-
-              <ColorControl
-                label="Footer Text Color"
-                value={
-                  settings.footer
-                    .footerTextColor
-                }
-                onChange={(value) =>
-                  updateFooter(
-                    'footerTextColor',
                     value
                   )
                 }

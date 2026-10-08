@@ -45,8 +45,6 @@ const defaultFooter = {
 
   footerBackground: '#FFFDF9',
 
-  footerTextColor: '#000000',
-
   brandColor: '#000000',
 
   descriptionColor: '#000000',
@@ -252,10 +250,6 @@ const Footer = () => {
         backgroundColor:
           footer.footerBackground ||
           '#FFFDF9',
-
-        color:
-          footer.footerTextColor ||
-          '#000000',
       }}
     >
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-12 sm:py-16">
