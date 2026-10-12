@@ -9,6 +9,12 @@ import EditorActions from "../../components/EditorActions";
 
 const STORAGE_KEY = "startupCafeTrustResults";
 
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:5000"
+).replace(/\/+$/, "");
+
+const API_URL = `${API_BASE_URL}/api/cms/trust-result`;
+
 const DEFAULT_DATA = {
   section: {
     badge: "Our Impact",
@@ -198,17 +204,49 @@ const TrustResultsEditor = () => {
   const [savedMessage, setSavedMessage] = useState("");
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+    let cancelled = false;
 
-      if (saved) {
-        setFormData(mergeData(JSON.parse(saved)));
+    const loadData = async () => {
+      try {
+        const response = await fetch(API_URL);
+
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const content = result?.content;
+
+        if (content && typeof content === "object" && !Array.isArray(content)) {
+          if (!cancelled) {
+            const nextData = mergeData(content);
+            setFormData(nextData);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(nextData));
+          }
+
+          return;
+        }
+      } catch (error) {
+        console.error("Failed to load Trust & Results from MongoDB:", error);
       }
-    } catch (error) {
-      console.error("Failed to load Trust & Results editor data:", error);
-    }
-  }, []);
 
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+
+        if (saved && !cancelled) {
+          setFormData(mergeData(JSON.parse(saved)));
+        }
+      } catch (error) {
+        console.error("Failed to load local Trust & Results data:", error);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const updateSection = (key, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -377,8 +415,22 @@ const TrustResultsEditor = () => {
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
+      const response = await fetch(API_URL, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to save data.");
+      }
+
       localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
 
       window.dispatchEvent(
@@ -390,37 +442,51 @@ const TrustResultsEditor = () => {
 
       setSavedMessage("Our Impact changes saved successfully.");
 
-      setTimeout(() => {
-        setSavedMessage("");
-      }, 2500);
+      setTimeout(() => setSavedMessage(""), 2500);
     } catch (error) {
       console.error("Failed to save Trust & Results data:", error);
-
-      setSavedMessage("Unable to save changes.");
+      setSavedMessage("Unable to save changes. Check your backend.");
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     const resetData = clone(DEFAULT_DATA);
 
-    setFormData(resetData);
-    setOpenStat(null);
-    setOpenReview(null);
+    try {
+      const response = await fetch(API_URL, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(resetData),
+      });
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(resetData));
+      const result = await response.json();
 
-    window.dispatchEvent(
-      new StorageEvent("storage", {
-        key: STORAGE_KEY,
-        newValue: JSON.stringify(resetData),
-      }),
-    );
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to reset data.");
+      }
 
-    setSavedMessage("Our Impact reset to defaults.");
+      setFormData(resetData);
+      setOpenStat(null);
+      setOpenReview(null);
 
-    setTimeout(() => {
-      setSavedMessage("");
-    }, 2500);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(resetData));
+
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: STORAGE_KEY,
+          newValue: JSON.stringify(resetData),
+        }),
+      );
+
+      setSavedMessage("Our Impact reset to defaults.");
+    } catch (error) {
+      console.error("Failed to reset Trust & Results:", error);
+      setSavedMessage("Unable to reset. Check your backend.");
+    }
+
+    setTimeout(() => setSavedMessage(""), 2500);
   };
 
   return (

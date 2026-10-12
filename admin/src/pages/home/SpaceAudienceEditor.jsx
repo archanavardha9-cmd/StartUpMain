@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import {
   Plus,
@@ -15,6 +16,12 @@ import TypographyControls from "../../components/TypographyControls";
 import EditorActions from "../../components/EditorActions";
 
 const STORAGE_KEY = "startupCafeSpaceAudience";
+
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:5000"
+).replace(/\/+$/, "");
+
+const API_URL = `${API_BASE_URL}/api/cms/space-audience`;
 
 const DEFAULT_DATA = {
   section: {
@@ -129,37 +136,152 @@ const ICON_OPTIONS = [
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
+const mergeData = (parsed = {}) => ({
+  ...clone(DEFAULT_DATA),
+  ...parsed,
+
+  section: {
+    ...clone(DEFAULT_DATA).section,
+    ...(parsed.section || {}),
+  },
+
+  typography: Object.fromEntries(
+    Object.keys(DEFAULT_DATA.typography).map((key) => [
+      key,
+      {
+        ...DEFAULT_DATA.typography[key],
+        ...(parsed.typography?.[key] || {}),
+      },
+    ]),
+  ),
+
+  cards: Array.isArray(parsed.cards)
+    ? parsed.cards
+    : clone(DEFAULT_DATA).cards,
+});
+
+const getFallbackData = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+
+    return saved
+      ? mergeData(JSON.parse(saved))
+      : clone(DEFAULT_DATA);
+  } catch (error) {
+    console.error("Failed to read fallback data:", error);
+    return clone(DEFAULT_DATA);
+  }
+};
+
+const fetchSpaceAudience = async () => {
+  const response = await fetch(API_URL);
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load Space & Audience (${response.status}).`
+    );
+  }
+
+  const result = await response.json();
+
+  if (!result?.content) {
+    throw new Error(
+      "Space & Audience has not been saved to the database yet."
+    );
+  }
+
+  return mergeData(result.content);
+};
+
+const dispatchContentUpdate = (data) => {
+  const value = JSON.stringify(data);
+
+  localStorage.setItem(STORAGE_KEY, value);
+
+  window.dispatchEvent(
+    new StorageEvent("storage", {
+      key: STORAGE_KEY,
+      newValue: value,
+    })
+  );
+};
+
+const saveSpaceAudience = async (data) => {
+  const response = await fetch(API_URL, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    let message = "Unable to save Space & Audience.";
+
+    try {
+      const result = await response.json();
+      message = result.message || message;
+    } catch {
+      // Keep the fallback error message.
+    }
+
+    throw new Error(message);
+  }
+
+  const result = await response.json();
+
+  if (!result?.content) {
+    throw new Error("The server did not return the saved content.");
+  }
+
+  return mergeData(result.content);
+};
+
 const SpaceAudienceEditor = () => {
   const [formData, setFormData] = useState(clone(DEFAULT_DATA));
   const [openCard, setOpenCard] = useState(null);
   const [savedMessage, setSavedMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+    let cancelled = false;
 
-      if (saved) {
-        const parsed = JSON.parse(saved);
+    const loadData = async () => {
+      setIsLoading(true);
+      setSavedMessage("");
 
-        setFormData({
-          ...clone(DEFAULT_DATA),
-          ...parsed,
-          section: {
-            ...clone(DEFAULT_DATA).section,
-            ...(parsed.section || {}),
-          },
-          typography: {
-            ...clone(DEFAULT_DATA).typography,
-            ...(parsed.typography || {}),
-          },
-          cards: Array.isArray(parsed.cards)
-            ? parsed.cards
-            : clone(DEFAULT_DATA).cards,
-        });
+      try {
+        const data = await fetchSpaceAudience();
+
+        if (!cancelled) {
+          setFormData(data);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+      } catch (error) {
+        console.error(
+          "Failed to load Space & Audience from MongoDB:",
+          error
+        );
+
+        if (!cancelled) {
+          setFormData(getFallbackData());
+          setSavedMessage(
+            "Could not load saved database content. Showing fallback content; saving will create or update the database record."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
-    } catch (error) {
-      console.error("Failed to load Space & Audience editor data:", error);
-    }
+    };
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const updateSection = (key, value) => {
@@ -191,7 +313,7 @@ const SpaceAudienceEditor = () => {
               ...card,
               [key]: value,
             }
-          : card,
+          : card
       ),
     }));
   };
@@ -229,7 +351,6 @@ const SpaceAudienceEditor = () => {
       const duplicated = clone(cards[index]);
 
       duplicated.title = `${duplicated.title} Copy`;
-
       cards.splice(index + 1, 0, duplicated);
 
       return {
@@ -250,7 +371,10 @@ const SpaceAudienceEditor = () => {
         return prev;
       }
 
-      [cards[index], cards[targetIndex]] = [cards[targetIndex], cards[index]];
+      [cards[index], cards[targetIndex]] = [
+        cards[targetIndex],
+        cards[index],
+      ];
 
       return {
         ...prev,
@@ -261,49 +385,57 @@ const SpaceAudienceEditor = () => {
     setOpenCard(direction === "up" ? index - 1 : index + 1);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving || isLoading) return;
+
+    setIsSaving(true);
+    setSavedMessage("Saving Space & Audience to MongoDB...");
+
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+      const savedData = await saveSpaceAudience(formData);
 
-      window.dispatchEvent(
-        new StorageEvent("storage", {
-          key: STORAGE_KEY,
-          newValue: JSON.stringify(formData),
-        }),
+      setFormData(savedData);
+      dispatchContentUpdate(savedData);
+
+      setSavedMessage(
+        "Space & Audience changes saved successfully."
       );
-
-      setSavedMessage("Space & Audience changes saved successfully.");
-
-      setTimeout(() => {
-        setSavedMessage("");
-      }, 2500);
     } catch (error) {
-      console.error("Failed to save Space & Audience data:", error);
-
-      setSavedMessage("Unable to save changes.");
+      console.error("Failed to save Space & Audience:", error);
+      setSavedMessage(
+        `Unable to save changes: ${error.message}`
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
+    if (isSaving || isLoading) return;
+
     const resetData = clone(DEFAULT_DATA);
 
-    setFormData(resetData);
-    setOpenCard(null);
+    setIsSaving(true);
+    setSavedMessage("Restoring default content in MongoDB...");
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(resetData));
+    try {
+      const savedData = await saveSpaceAudience(resetData);
 
-    window.dispatchEvent(
-      new StorageEvent("storage", {
-        key: STORAGE_KEY,
-        newValue: JSON.stringify(resetData),
-      }),
-    );
+      setFormData(savedData);
+      setOpenCard(null);
+      dispatchContentUpdate(savedData);
 
-    setSavedMessage("Space & Audience reset to defaults.");
-
-    setTimeout(() => {
-      setSavedMessage("");
-    }, 2500);
+      setSavedMessage(
+        "Space & Audience reset to defaults successfully."
+      );
+    } catch (error) {
+      console.error("Failed to reset Space & Audience:", error);
+      setSavedMessage(
+        `Unable to reset content: ${error.message}`
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -325,16 +457,24 @@ const SpaceAudienceEditor = () => {
 
             <div className="px-4 py-2.5 bg-white border-2 border-black rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
               <span className="text-xs font-black text-black uppercase tracking-wide">
-                6 Core Cards
+                {formData.cards.length} Core Cards
               </span>
             </div>
           </div>
         </div>
 
+        {isLoading && (
+          <div className="bg-white border-2 border-black rounded-xl p-4 text-sm font-bold text-black">
+            Loading Space & Audience from MongoDB...
+          </div>
+        )}
+
         {/* Section Content */}
         <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
           <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#FFDE4D]">
-            <h2 className="text-lg font-black text-black">Section Content</h2>
+            <h2 className="text-lg font-black text-black">
+              Section Content
+            </h2>
 
             <p className="text-xs font-semibold text-black/65 mt-1">
               Edit the content shown above the audience cards.
@@ -361,24 +501,17 @@ const SpaceAudienceEditor = () => {
             <Field label="Description">
               <textarea
                 value={formData.section.description}
-                onChange={(e) => updateSection("description", e.target.value)}
+                onChange={(e) =>
+                  updateSection("description", e.target.value)
+                }
                 rows={4}
                 className="
-                w-full
-                px-3.5 py-3
-                bg-white
-                border-2 border-black
-                rounded-xl
-                text-sm
-                font-semibold
-                text-black
-                outline-none
-                resize-y
-                placeholder:text-black/30
-                focus:bg-[#FFFDF9]
-                focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                transition-all
-              "
+                  w-full px-3.5 py-3 bg-white border-2 border-black
+                  rounded-xl text-sm font-semibold text-black outline-none
+                  resize-y placeholder:text-black/30 focus:bg-[#FFFDF9]
+                  focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                  transition-all
+                "
                 placeholder="Describe the section..."
               />
             </Field>
@@ -388,7 +521,9 @@ const SpaceAudienceEditor = () => {
         {/* Section Colors */}
         <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
           <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#A3E635]">
-            <h2 className="text-lg font-black text-black">Section Colors</h2>
+            <h2 className="text-lg font-black text-black">
+              Section Colors
+            </h2>
 
             <p className="text-xs font-semibold text-black/65 mt-1">
               Control the main colors used by this section.
@@ -399,25 +534,33 @@ const SpaceAudienceEditor = () => {
             <ColorControl
               label="Section Background"
               value={formData.section.backgroundColor}
-              onChange={(value) => updateSection("backgroundColor", value)}
+              onChange={(value) =>
+                updateSection("backgroundColor", value)
+              }
             />
 
             <ColorControl
               label="Badge Background"
               value={formData.section.badgeColor}
-              onChange={(value) => updateSection("badgeColor", value)}
+              onChange={(value) =>
+                updateSection("badgeColor", value)
+              }
             />
 
             <ColorControl
               label="Heading Color"
               value={formData.section.headingColor}
-              onChange={(value) => updateSection("headingColor", value)}
+              onChange={(value) =>
+                updateSection("headingColor", value)
+              }
             />
 
             <ColorControl
               label="Description Color"
               value={formData.section.descriptionColor}
-              onChange={(value) => updateSection("descriptionColor", value)}
+              onChange={(value) =>
+                updateSection("descriptionColor", value)
+              }
             />
           </div>
         </section>
@@ -434,8 +577,9 @@ const SpaceAudienceEditor = () => {
 
           <div className="p-5 sm:p-6 space-y-8">
             <div>
-              <h3 className="text-sm font-black text-black mb-4">Badge</h3>
-
+              <h3 className="text-sm font-black text-black mb-4">
+                Badge
+              </h3>
               <TypographyControls
                 value={formData.typography.badge}
                 onChange={(value) => updateTypography("badge", value)}
@@ -446,7 +590,6 @@ const SpaceAudienceEditor = () => {
               <h3 className="text-sm font-black text-black mb-4">
                 Section Heading
               </h3>
-
               <TypographyControls
                 value={formData.typography.heading}
                 onChange={(value) => updateTypography("heading", value)}
@@ -457,19 +600,23 @@ const SpaceAudienceEditor = () => {
               <h3 className="text-sm font-black text-black mb-4">
                 Section Description
               </h3>
-
               <TypographyControls
                 value={formData.typography.description}
-                onChange={(value) => updateTypography("description", value)}
+                onChange={(value) =>
+                  updateTypography("description", value)
+                }
               />
             </div>
 
             <div className="border-t-2 border-black/10 pt-7">
-              <h3 className="text-sm font-black text-black mb-4">Card Title</h3>
-
+              <h3 className="text-sm font-black text-black mb-4">
+                Card Title
+              </h3>
               <TypographyControls
                 value={formData.typography.cardTitle}
-                onChange={(value) => updateTypography("cardTitle", value)}
+                onChange={(value) =>
+                  updateTypography("cardTitle", value)
+                }
               />
             </div>
 
@@ -477,10 +624,11 @@ const SpaceAudienceEditor = () => {
               <h3 className="text-sm font-black text-black mb-4">
                 Card Description
               </h3>
-
               <TypographyControls
                 value={formData.typography.cardDescription}
-                onChange={(value) => updateTypography("cardDescription", value)}
+                onChange={(value) =>
+                  updateTypography("cardDescription", value)
+                }
               />
             </div>
           </div>
@@ -503,19 +651,16 @@ const SpaceAudienceEditor = () => {
               <button
                 type="button"
                 onClick={addCard}
+                disabled={isLoading || isSaving}
                 className="
-                inline-flex items-center justify-center gap-2
-                px-4 py-2.5
-                bg-[#A3E635]
-                border-2 border-black
-                rounded-xl
-                text-xs font-black
-                text-black
-                shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
-                hover:-translate-y-0.5
-                hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                transition-all
-              "
+                  inline-flex items-center justify-center gap-2
+                  px-4 py-2.5 bg-[#A3E635] border-2 border-black
+                  rounded-xl text-xs font-black text-black
+                  shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+                  hover:-translate-y-0.5
+                  hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                  disabled:opacity-50 transition-all
+                "
               >
                 <Plus className="w-4 h-4" />
                 Add Card
@@ -553,13 +698,9 @@ const SpaceAudienceEditor = () => {
                     type="button"
                     onClick={() => setOpenCard(isOpen ? null : index)}
                     className="
-                    w-full
-                    flex items-center gap-3
-                    p-4
-                    text-left
-                    hover:bg-white
-                    transition-colors
-                  "
+                      w-full flex items-center gap-3 p-4 text-left
+                      hover:bg-white transition-colors
+                    "
                   >
                     <div className="shrink-0 text-black/40">
                       <GripVertical className="w-4 h-4" />
@@ -571,7 +712,9 @@ const SpaceAudienceEditor = () => {
                         backgroundColor: card.iconBg || "#FFDE4D",
                       }}
                     >
-                      <span className="text-xs font-black">{index + 1}</span>
+                      <span className="text-xs font-black">
+                        {index + 1}
+                      </span>
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -604,16 +747,11 @@ const SpaceAudienceEditor = () => {
                               updateCard(index, "icon", e.target.value)
                             }
                             className="
-                            w-full px-3.5 py-3
-                            bg-white
-                            border-2 border-black
-                            rounded-xl
-                            text-sm
-                            font-bold
-                            text-black
-                            outline-none
-                            focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                          "
+                              w-full px-3.5 py-3 bg-white border-2
+                              border-black rounded-xl text-sm font-bold
+                              text-black outline-none
+                              focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                            "
                           >
                             {ICON_OPTIONS.map((icon) => (
                               <option key={icon} value={icon}>
@@ -638,25 +776,21 @@ const SpaceAudienceEditor = () => {
                         <textarea
                           value={card.description}
                           onChange={(e) =>
-                            updateCard(index, "description", e.target.value)
+                            updateCard(
+                              index,
+                              "description",
+                              e.target.value
+                            )
                           }
                           rows={4}
                           className="
-                          w-full
-                          px-3.5 py-3
-                          bg-white
-                          border-2 border-black
-                          rounded-xl
-                          text-sm
-                          font-semibold
-                          text-black
-                          outline-none
-                          resize-y
-                          placeholder:text-black/30
-                          focus:bg-[#FFFDF9]
-                          focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
-                          transition-all
-                        "
+                            w-full px-3.5 py-3 bg-white border-2
+                            border-black rounded-xl text-sm font-semibold
+                            text-black outline-none resize-y
+                            placeholder:text-black/30 focus:bg-[#FFFDF9]
+                            focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]
+                            transition-all
+                          "
                           placeholder="Card description"
                         />
                       </Field>
@@ -687,18 +821,12 @@ const SpaceAudienceEditor = () => {
                             onClick={() => moveCard(index, "up")}
                             disabled={index === 0}
                             className="
-                            flex-1
-                            inline-flex items-center justify-center gap-2
-                            px-3 py-2.5
-                            bg-white
-                            border-2 border-black
-                            rounded-xl
-                            text-xs font-black
-                            disabled:opacity-30
-                            disabled:cursor-not-allowed
-                            hover:bg-[#FFDE4D]
-                            transition-all
-                          "
+                              flex-1 inline-flex items-center justify-center
+                              gap-2 px-3 py-2.5 bg-white border-2
+                              border-black rounded-xl text-xs font-black
+                              disabled:opacity-30 disabled:cursor-not-allowed
+                              hover:bg-[#FFDE4D] transition-all
+                            "
                           >
                             <ChevronUp className="w-4 h-4" />
                             Move Up
@@ -709,18 +837,12 @@ const SpaceAudienceEditor = () => {
                             onClick={() => moveCard(index, "down")}
                             disabled={index === formData.cards.length - 1}
                             className="
-                            flex-1
-                            inline-flex items-center justify-center gap-2
-                            px-3 py-2.5
-                            bg-white
-                            border-2 border-black
-                            rounded-xl
-                            text-xs font-black
-                            disabled:opacity-30
-                            disabled:cursor-not-allowed
-                            hover:bg-[#FFDE4D]
-                            transition-all
-                          "
+                              flex-1 inline-flex items-center justify-center
+                              gap-2 px-3 py-2.5 bg-white border-2
+                              border-black rounded-xl text-xs font-black
+                              disabled:opacity-30 disabled:cursor-not-allowed
+                              hover:bg-[#FFDE4D] transition-all
+                            "
                           >
                             <ChevronDown className="w-4 h-4" />
                             Move Down
@@ -730,16 +852,11 @@ const SpaceAudienceEditor = () => {
                             type="button"
                             onClick={() => duplicateCard(index)}
                             className="
-                            flex-1
-                            inline-flex items-center justify-center gap-2
-                            px-3 py-2.5
-                            bg-white
-                            border-2 border-black
-                            rounded-xl
-                            text-xs font-black
-                            hover:bg-[#A3E635]
-                            transition-all
-                          "
+                              flex-1 inline-flex items-center justify-center
+                              gap-2 px-3 py-2.5 bg-white border-2
+                              border-black rounded-xl text-xs font-black
+                              hover:bg-[#A3E635] transition-all
+                            "
                           >
                             <Copy className="w-4 h-4" />
                             Duplicate
@@ -749,16 +866,11 @@ const SpaceAudienceEditor = () => {
                             type="button"
                             onClick={() => deleteCard(index)}
                             className="
-                            flex-1
-                            inline-flex items-center justify-center gap-2
-                            px-3 py-2.5
-                            bg-white
-                            border-2 border-black
-                            rounded-xl
-                            text-xs font-black
-                            hover:bg-[#F472B6]
-                            transition-all
-                          "
+                              flex-1 inline-flex items-center justify-center
+                              gap-2 px-3 py-2.5 bg-white border-2
+                              border-black rounded-xl text-xs font-black
+                              hover:bg-[#F472B6] transition-all
+                            "
                           >
                             <Trash2 className="w-4 h-4" />
                             Delete
@@ -777,7 +889,11 @@ const SpaceAudienceEditor = () => {
         <EditorActions
           onSave={handleSave}
           onReset={handleReset}
-          savedMessage={savedMessage}
+          savedMessage={
+            isSaving
+              ? "Saving changes to MongoDB..."
+              : savedMessage
+          }
         />
       </div>
     </div>

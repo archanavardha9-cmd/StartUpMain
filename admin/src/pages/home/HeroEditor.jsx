@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { ImagePlus, RotateCcw, Save, Trash2, Plus } from 'lucide-react';
+
+import React, { useEffect, useState } from 'react';
+import { ImagePlus, Trash2, Plus } from 'lucide-react';
 
 import Field from '../../components/Field';
 import TextInput from '../../components/TextInput';
@@ -9,6 +10,12 @@ import ImageUploader from '../../components/ImageUploader';
 import EditorActions from '../../components/EditorActions';
 
 const STORAGE_KEY = 'startupCafeHero';
+
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || 'http://localhost:5000'
+).replace(/\/+$/, '');
+
+const HERO_API_URL = `${API_BASE_URL}/api/cms/hero`;
 
 const DEFAULT_HERO = {
   badgeText: 'Premium Workspace Experience',
@@ -89,73 +96,111 @@ const DEFAULT_HERO = {
 
 const cloneDefault = () => JSON.parse(JSON.stringify(DEFAULT_HERO));
 
+const normalizeHero = (parsed = {}) => ({
+  ...cloneDefault(),
+  ...parsed,
+
+  typography: {
+    heading: {
+      ...DEFAULT_HERO.typography.heading,
+      ...(parsed.typography?.heading || {}),
+    },
+    description: {
+      ...DEFAULT_HERO.typography.description,
+      ...(parsed.typography?.description || {}),
+    },
+  },
+
+  colors: {
+    ...DEFAULT_HERO.colors,
+    ...(parsed.colors || {}),
+  },
+
+  logoPaths:
+    Array.isArray(parsed.logoPaths)
+      ? parsed.logoPaths
+      : [...DEFAULT_HERO.logoPaths],
+});
+
 const getSavedData = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-
-    if (!saved) {
-      return cloneDefault();
-    }
-
-    const parsed = JSON.parse(saved);
-
-    return {
-      ...cloneDefault(),
-      ...parsed,
-      typography: {
-        ...DEFAULT_HERO.typography,
-        ...(parsed.typography || {}),
-        heading: {
-          ...DEFAULT_HERO.typography.heading,
-          ...(parsed.typography?.heading || {}),
-        },
-        description: {
-          ...DEFAULT_HERO.typography.description,
-          ...(parsed.typography?.description || {}),
-        },
-      },
-      colors: {
-        ...DEFAULT_HERO.colors,
-        ...(parsed.colors || {}),
-      },
-      logoPaths:
-        Array.isArray(parsed.logoPaths) && parsed.logoPaths.length
-          ? parsed.logoPaths
-          : [...DEFAULT_HERO.logoPaths],
-    };
+    return saved ? normalizeHero(JSON.parse(saved)) : cloneDefault();
   } catch {
     return cloneDefault();
   }
 };
 
-const SectionHeader = ({ number, title, description }) => {
-  return (
-    <div className="flex items-start gap-4 mb-6">
-      <div className="w-9 h-9 shrink-0 rounded-lg bg-[#FFDE4D] border-2 border-black flex items-center justify-center font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-        {number}
-      </div>
-
-      <div>
-        <h2 className="text-lg font-black text-black">{title}</h2>
-        <p className="text-xs font-semibold text-black/50 mt-1">
-          {description}
-        </p>
-      </div>
+const SectionHeader = ({ number, title, description }) => (
+  <div className="flex items-start gap-4 mb-6">
+    <div className="w-9 h-9 shrink-0 rounded-lg bg-[#FFDE4D] border-2 border-black flex items-center justify-center font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+      {number}
     </div>
-  );
-};
 
-const Panel = ({ children }) => {
-  return (
-    <div className="bg-white border-2 border-black rounded-2xl p-5 sm:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-      {children}
+    <div>
+      <h2 className="text-lg font-black text-black">{title}</h2>
+      <p className="text-xs font-semibold text-black/50 mt-1">
+        {description}
+      </p>
     </div>
-  );
-};
+  </div>
+);
+
+const Panel = ({ children }) => (
+  <div className="bg-white border-2 border-black rounded-2xl p-5 sm:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+    {children}
+  </div>
+);
 
 const HeroEditor = () => {
   const [formData, setFormData] = useState(getSavedData);
   const [savedMessage, setSavedMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load the saved Hero content from MongoDB.
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHero = async () => {
+      try {
+        const response = await fetch(HERO_API_URL);
+
+        if (!response.ok) {
+          throw new Error(`Unable to load Hero content (${response.status}).`);
+        }
+
+        const document = await response.json();
+
+        // The backend returns the MongoDB document directly.
+        const content = document?.content;
+
+        if (!cancelled && content) {
+          const normalized = normalizeHero(content);
+
+          setFormData(normalized);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Hero loading error:', error);
+          setSavedMessage(
+            'Could not load Hero from the server. Showing local content.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadHero();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const update = (key, value) => {
     setFormData((prev) => ({
@@ -174,31 +219,80 @@ const HeroEditor = () => {
     }));
   };
 
-  const saveChanges = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+  const saveChanges = async () => {
+    if (isLoading || isSaving) return;
 
-    setSavedMessage('Hero changes saved successfully.');
+    setIsSaving(true);
+    setSavedMessage('');
 
-    window.dispatchEvent(new Event('storage'));
+    try {
+      const response = await fetch(HERO_API_URL, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
 
-    setTimeout(() => {
-      setSavedMessage('');
-    }, 2500);
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          result?.message || `Unable to save Hero (${response.status}).`
+        );
+      }
+
+      // Update local fallback only after the API confirms success.
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+
+      window.dispatchEvent(new Event('storage'));
+
+      setSavedMessage('Hero changes saved successfully.');
+    } catch (error) {
+      console.error('Hero saving error:', error);
+      setSavedMessage(error.message || 'Failed to save Hero changes.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const resetChanges = () => {
+  const resetChanges = async () => {
+    if (isLoading || isSaving) return;
+
     const defaults = cloneDefault();
 
-    setFormData(defaults);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
+    setIsSaving(true);
+    setSavedMessage('');
 
-    setSavedMessage('Hero restored to original Git content.');
+    try {
+      const response = await fetch(HERO_API_URL, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(defaults),
+      });
 
-    window.dispatchEvent(new Event('storage'));
+      const result = await response.json().catch(() => null);
 
-    setTimeout(() => {
-      setSavedMessage('');
-    }, 2500);
+      if (!response.ok) {
+        throw new Error(
+          result?.message || `Unable to reset Hero (${response.status}).`
+        );
+      }
+
+      setFormData(defaults);
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
+      window.dispatchEvent(new Event('storage'));
+
+      setSavedMessage('Hero restored to original default content.');
+    } catch (error) {
+      console.error('Hero reset error:', error);
+      setSavedMessage(error.message || 'Failed to reset Hero content.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const addLogo = () => {
@@ -241,9 +335,14 @@ const HeroEditor = () => {
                 guarantees and partner logos displayed in the homepage Hero.
               </p>
             </div>
-            
           </div>
         </div>
+
+        {isLoading && (
+          <p role="status" className="text-sm font-semibold text-black/60">
+            Loading saved Hero content...
+          </p>
+        )}
 
         <div className="space-y-7">
 
@@ -291,9 +390,7 @@ const HeroEditor = () => {
               >
                 <TextInput
                   value={formData.headingHighlight}
-                  onChange={(value) =>
-                    update('headingHighlight', value)
-                  }
+                  onChange={(value) => update('headingHighlight', value)}
                 />
               </Field>
 
@@ -303,9 +400,7 @@ const HeroEditor = () => {
               >
                 <textarea
                   value={formData.description}
-                  onChange={(e) =>
-                    update('description', e.target.value)
-                  }
+                  onChange={(e) => update('description', e.target.value)}
                   rows={4}
                   className="w-full px-3.5 py-3 bg-white border-2 border-black rounded-xl text-sm font-semibold text-black outline-none placeholder:text-black/30 focus:bg-[#FFFDF9] focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all resize-y"
                 />
@@ -328,9 +423,7 @@ const HeroEditor = () => {
               >
                 <TextInput
                   value={formData.primaryButtonText}
-                  onChange={(value) =>
-                    update('primaryButtonText', value)
-                  }
+                  onChange={(value) => update('primaryButtonText', value)}
                 />
               </Field>
 
@@ -340,9 +433,7 @@ const HeroEditor = () => {
               >
                 <TextInput
                   value={formData.secondaryButtonText}
-                  onChange={(value) =>
-                    update('secondaryButtonText', value)
-                  }
+                  onChange={(value) => update('secondaryButtonText', value)}
                 />
               </Field>
             </div>
@@ -386,27 +477,21 @@ const HeroEditor = () => {
               <Field label="Recognition Badge">
                 <TextInput
                   value={formData.recognitionBadge}
-                  onChange={(value) =>
-                    update('recognitionBadge', value)
-                  }
+                  onChange={(value) => update('recognitionBadge', value)}
                 />
               </Field>
 
               <Field label="Guarantee One">
                 <TextInput
                   value={formData.guaranteeOne}
-                  onChange={(value) =>
-                    update('guaranteeOne', value)
-                  }
+                  onChange={(value) => update('guaranteeOne', value)}
                 />
               </Field>
 
               <Field label="Guarantee Two">
                 <TextInput
                   value={formData.guaranteeTwo}
-                  onChange={(value) =>
-                    update('guaranteeTwo', value)
-                  }
+                  onChange={(value) => update('guaranteeTwo', value)}
                 />
               </Field>
             </div>
@@ -424,7 +509,7 @@ const HeroEditor = () => {
               <div className="space-y-5">
                 <Field
                   label="Image"
-                  description="Use the existing image uploader component. The uploaded object URL is suitable for the current frontend-only CMS."
+                  description="Use the existing image uploader component. Uploaded images must have a persistent URL to survive refreshes."
                 >
                   <ImageUploader
                     value={formData.heroImage}
@@ -462,18 +547,14 @@ const HeroEditor = () => {
               <Field label="Image Top Badge">
                 <TextInput
                   value={formData.imageTopBadge}
-                  onChange={(value) =>
-                    update('imageTopBadge', value)
-                  }
+                  onChange={(value) => update('imageTopBadge', value)}
                 />
               </Field>
 
               <Field label="Image Bottom Badge">
                 <TextInput
                   value={formData.imageBottomBadge}
-                  onChange={(value) =>
-                    update('imageBottomBadge', value)
-                  }
+                  onChange={(value) => update('imageBottomBadge', value)}
                 />
               </Field>
             </div>
@@ -515,11 +596,7 @@ const HeroEditor = () => {
                 <TypographyControls
                   value={formData.typography.description}
                   onChange={(value) =>
-                    updateNested(
-                      'typography',
-                      'description',
-                      value
-                    )
+                    updateNested('typography', 'description', value)
                   }
                 />
               </div>
@@ -538,9 +615,7 @@ const HeroEditor = () => {
               <Field label="Badge Background">
                 <ColorControl
                   value={formData.colors.badge}
-                  onChange={(value) =>
-                    updateNested('colors', 'badge', value)
-                  }
+                  onChange={(value) => updateNested('colors', 'badge', value)}
                 />
               </Field>
 
@@ -548,11 +623,7 @@ const HeroEditor = () => {
                 <ColorControl
                   value={formData.colors.headingHighlight}
                   onChange={(value) =>
-                    updateNested(
-                      'colors',
-                      'headingHighlight',
-                      value
-                    )
+                    updateNested('colors', 'headingHighlight', value)
                   }
                 />
               </Field>
@@ -561,11 +632,7 @@ const HeroEditor = () => {
                 <ColorControl
                   value={formData.colors.primaryButton}
                   onChange={(value) =>
-                    updateNested(
-                      'colors',
-                      'primaryButton',
-                      value
-                    )
+                    updateNested('colors', 'primaryButton', value)
                   }
                 />
               </Field>
@@ -574,11 +641,7 @@ const HeroEditor = () => {
                 <ColorControl
                   value={formData.colors.secondaryButton}
                   onChange={(value) =>
-                    updateNested(
-                      'colors',
-                      'secondaryButton',
-                      value
-                    )
+                    updateNested('colors', 'secondaryButton', value)
                   }
                 />
               </Field>
@@ -587,11 +650,7 @@ const HeroEditor = () => {
                 <ColorControl
                   value={formData.colors.memberBadge}
                   onChange={(value) =>
-                    updateNested(
-                      'colors',
-                      'memberBadge',
-                      value
-                    )
+                    updateNested('colors', 'memberBadge', value)
                   }
                 />
               </Field>
@@ -600,11 +659,7 @@ const HeroEditor = () => {
                 <ColorControl
                   value={formData.colors.yearsBadge}
                   onChange={(value) =>
-                    updateNested(
-                      'colors',
-                      'yearsBadge',
-                      value
-                    )
+                    updateNested('colors', 'yearsBadge', value)
                   }
                 />
               </Field>
@@ -613,11 +668,7 @@ const HeroEditor = () => {
                 <ColorControl
                   value={formData.colors.recognitionBadge}
                   onChange={(value) =>
-                    updateNested(
-                      'colors',
-                      'recognitionBadge',
-                      value
-                    )
+                    updateNested('colors', 'recognitionBadge', value)
                   }
                 />
               </Field>
@@ -626,11 +677,7 @@ const HeroEditor = () => {
                 <ColorControl
                   value={formData.colors.guaranteeOne}
                   onChange={(value) =>
-                    updateNested(
-                      'colors',
-                      'guaranteeOne',
-                      value
-                    )
+                    updateNested('colors', 'guaranteeOne', value)
                   }
                 />
               </Field>
@@ -639,11 +686,7 @@ const HeroEditor = () => {
                 <ColorControl
                   value={formData.colors.guaranteeTwo}
                   onChange={(value) =>
-                    updateNested(
-                      'colors',
-                      'guaranteeTwo',
-                      value
-                    )
+                    updateNested('colors', 'guaranteeTwo', value)
                   }
                 />
               </Field>
@@ -652,11 +695,7 @@ const HeroEditor = () => {
                 <ColorControl
                   value={formData.colors.imageBottomBadge}
                   onChange={(value) =>
-                    updateNested(
-                      'colors',
-                      'imageBottomBadge',
-                      value
-                    )
+                    updateNested('colors', 'imageBottomBadge', value)
                   }
                 />
               </Field>
@@ -665,11 +704,7 @@ const HeroEditor = () => {
                 <ColorControl
                   value={formData.colors.acknowledgedBy}
                   onChange={(value) =>
-                    updateNested(
-                      'colors',
-                      'acknowledgedBy',
-                      value
-                    )
+                    updateNested('colors', 'acknowledgedBy', value)
                   }
                 />
               </Field>
@@ -690,9 +725,7 @@ const HeroEditor = () => {
             >
               <TextInput
                 value={formData.acknowledgedBy}
-                onChange={(value) =>
-                  update('acknowledgedBy', value)
-                }
+                onChange={(value) => update('acknowledgedBy', value)}
               />
             </Field>
 
@@ -736,9 +769,7 @@ const HeroEditor = () => {
                     <div className="flex-1">
                       <TextInput
                         value={logo}
-                        onChange={(value) =>
-                          updateLogo(index, value)
-                        }
+                        onChange={(value) => updateLogo(index, value)}
                         placeholder="/logos/example.png"
                       />
                     </div>
@@ -761,7 +792,9 @@ const HeroEditor = () => {
           <EditorActions
             onSave={saveChanges}
             onReset={resetChanges}
-            savedMessage={savedMessage}
+            savedMessage={
+              isSaving ? 'Saving Hero content...' : savedMessage
+            }
           />
         </div>
       </div>

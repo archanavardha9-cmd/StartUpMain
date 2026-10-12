@@ -5,6 +5,12 @@ import { MessageCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 
 const STORAGE_KEY = 'startupCafeHero';
 
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || 'http://localhost:5000'
+).replace(/\/+$/, '');
+
+const HERO_API_URL = `${API_BASE_URL}/api/cms/hero`;
+
 const DEFAULT_HERO = {
   badgeText: 'Premium Workspace Experience',
 
@@ -112,6 +118,7 @@ const mergeHeroData = (data = {}) => ({
       : DEFAULT_HERO.logoPaths,
 });
 
+// Used only as a fallback if the API is unavailable.
 const getHeroData = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -126,36 +133,67 @@ const getHeroData = () => {
   }
 };
 
-const Hero = ({ onOpenBooking, previewData, isPreview = false }) => {
+// Fetch the latest saved Hero content from MongoDB through the API.
+const fetchHeroFromAPI = async () => {
+  const response = await fetch(HERO_API_URL);
+
+  if (!response.ok) {
+    throw new Error(`Failed to load Hero content (${response.status})`);
+  }
+
+  const result = await response.json();
+
+  if (!result || !result.content) {
+    throw new Error('Hero content was not found in the database.');
+  }
+
+  return mergeHeroData(result.content);
+};
+
+const Hero = ({
+  onOpenBooking,
+  previewData,
+  isPreview = false,
+}) => {
   const [savedHeroData, setSavedHeroData] = useState(getHeroData);
 
   useEffect(() => {
+    // Keep the Admin Editor preview independent of the API.
     if (isPreview || previewData !== undefined) {
       return undefined;
     }
 
-    const handleStorage = () => {
-      setSavedHeroData(getHeroData());
+    let cancelled = false;
+
+    const loadHero = async () => {
+      try {
+        const latestHeroData = await fetchHeroFromAPI();
+
+        if (!cancelled) {
+          setSavedHeroData(latestHeroData);
+        }
+      } catch (error) {
+        console.error('Unable to load Hero from MongoDB:', error);
+
+        // Keep the existing fallback if the API is unavailable.
+        if (!cancelled) {
+          setSavedHeroData(getHeroData());
+        }
+      }
     };
 
-    window.addEventListener('storage', handleStorage);
+    loadHero();
+
+    // Refresh the database content when the page regains focus.
+    window.addEventListener('focus', loadHero);
+
+    // If another tab updates local storage, re-fetch the database.
+    window.addEventListener('storage', loadHero);
 
     return () => {
-      window.removeEventListener('storage', handleStorage);
-    };
-  }, [isPreview, previewData]);
-
-  useEffect(() => {
-    if (isPreview || previewData !== undefined) {
-      return undefined;
-    }
-
-    const interval = setInterval(() => {
-      setSavedHeroData(getHeroData());
-    }, 500);
-
-    return () => {
-      clearInterval(interval);
+      cancelled = true;
+      window.removeEventListener('focus', loadHero);
+      window.removeEventListener('storage', loadHero);
     };
   }, [isPreview, previewData]);
 

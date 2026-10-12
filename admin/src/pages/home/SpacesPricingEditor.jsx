@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ChevronDown,
   Plus,
@@ -20,6 +20,12 @@ import EditorActions from "../../components/EditorActions";
 const STORAGE_KEY = "startupCafeSpacesPricing";
 const UPDATE_EVENT = "spacesPricingUpdated";
 
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:5000"
+).replace(/\/+$/, "");
+
+const API_URL = `${API_BASE_URL}/api/cms/spaces-pricing`;
+
 const DEFAULT_DATA = {
   section: {
     badge: "Spaces & Rates",
@@ -31,26 +37,10 @@ const DEFAULT_DATA = {
   },
 
   amenities: [
-    {
-      icon: "clock",
-      text: "24×7 Access",
-      iconBg: "#A3E635",
-    },
-    {
-      icon: "wifi",
-      text: "High-Speed WiFi",
-      iconBg: "#FFDE4D",
-    },
-    {
-      icon: "coffee",
-      text: "Tea & Coffee",
-      iconBg: "#F472B6",
-    },
-    {
-      icon: "users",
-      text: "Meeting Rooms",
-      iconBg: "#C084FC",
-    },
+    { icon: "clock", text: "24×7 Access", iconBg: "#A3E635" },
+    { icon: "wifi", text: "High-Speed WiFi", iconBg: "#FFDE4D" },
+    { icon: "coffee", text: "Tea & Coffee", iconBg: "#F472B6" },
+    { icon: "users", text: "Meeting Rooms", iconBg: "#C084FC" },
   ],
 
   daily: [
@@ -179,7 +169,6 @@ const DEFAULT_DATA = {
       lineHeight: 1.2,
       letterSpacing: 0,
     },
-
     description: {
       fontFamily: "Inter",
       fontSize: 14,
@@ -191,27 +180,52 @@ const DEFAULT_DATA = {
 };
 
 const iconOptions = [
-  {
-    value: "clock",
-    label: "Clock",
-    Icon: Clock,
-  },
-  {
-    value: "wifi",
-    label: "WiFi",
-    Icon: Wifi,
-  },
-  {
-    value: "coffee",
-    label: "Coffee",
-    Icon: Coffee,
-  },
-  {
-    value: "users",
-    label: "Users",
-    Icon: Users,
-  },
+  { value: "clock", label: "Clock", Icon: Clock },
+  { value: "wifi", label: "WiFi", Icon: Wifi },
+  { value: "coffee", label: "Coffee", Icon: Coffee },
+  { value: "users", label: "Users", Icon: Users },
 ];
+
+const mergeData = (parsed = {}) => ({
+  ...DEFAULT_DATA,
+  ...parsed,
+
+  section: {
+    ...DEFAULT_DATA.section,
+    ...(parsed.section || {}),
+  },
+
+  typography: {
+    ...DEFAULT_DATA.typography,
+    ...(parsed.typography || {}),
+
+    title: {
+      ...DEFAULT_DATA.typography.title,
+      ...(parsed.typography?.title || {}),
+    },
+
+    description: {
+      ...DEFAULT_DATA.typography.description,
+      ...(parsed.typography?.description || {}),
+    },
+  },
+
+  amenities: Array.isArray(parsed.amenities)
+    ? parsed.amenities
+    : DEFAULT_DATA.amenities,
+
+  daily: Array.isArray(parsed.daily)
+    ? parsed.daily
+    : DEFAULT_DATA.daily,
+
+  monthly: Array.isArray(parsed.monthly)
+    ? parsed.monthly
+    : DEFAULT_DATA.monthly,
+
+  galleryImages: Array.isArray(parsed.galleryImages)
+    ? parsed.galleryImages
+    : DEFAULT_DATA.galleryImages,
+});
 
 const getStoredData = () => {
   if (typeof window === "undefined") {
@@ -221,53 +235,9 @@ const getStoredData = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
 
-    if (!saved) {
-      return DEFAULT_DATA;
-    }
-
-    const parsed = JSON.parse(saved);
-
-    return {
-      ...DEFAULT_DATA,
-      ...parsed,
-
-      section: {
-        ...DEFAULT_DATA.section,
-        ...(parsed.section || {}),
-      },
-
-      typography: {
-        ...DEFAULT_DATA.typography,
-        ...(parsed.typography || {}),
-
-        title: {
-          ...DEFAULT_DATA.typography.title,
-          ...(parsed.typography?.title || {}),
-        },
-
-        description: {
-          ...DEFAULT_DATA.typography.description,
-          ...(parsed.typography?.description || {}),
-        },
-      },
-
-      amenities: Array.isArray(parsed.amenities)
-        ? parsed.amenities
-        : DEFAULT_DATA.amenities,
-
-      daily: Array.isArray(parsed.daily) ? parsed.daily : DEFAULT_DATA.daily,
-
-      monthly: Array.isArray(parsed.monthly)
-        ? parsed.monthly
-        : DEFAULT_DATA.monthly,
-
-      galleryImages: Array.isArray(parsed.galleryImages)
-        ? parsed.galleryImages
-        : DEFAULT_DATA.galleryImages,
-    };
+    return saved ? mergeData(JSON.parse(saved)) : DEFAULT_DATA;
   } catch (error) {
     console.error("Failed to read Spaces & Pricing data:", error);
-
     return DEFAULT_DATA;
   }
 };
@@ -294,32 +264,75 @@ const createGalleryItem = () => ({
 
 const SpacesPricingEditor = () => {
   const [data, setData] = useState(getStoredData);
-
   const [openSection, setOpenSection] = useState("section");
-
   const [openPlan, setOpenPlan] = useState(null);
-
   const [openAmenity, setOpenAmenity] = useState(null);
-
   const [openGallery, setOpenGallery] = useState(null);
-
   const [savedMessage, setSavedMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load Spaces & Pricing content from the database.
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadData = async () => {
+      try {
+        const response = await fetch(API_URL);
+
+        if (!response.ok) {
+          throw new Error(`Failed to load content (${response.status})`);
+        }
+
+        const result = await response.json();
+
+        if (cancelled) return;
+
+        if (result.content && typeof result.content === "object") {
+          const loadedData = mergeData(result.content);
+
+          setData(loadedData);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedData));
+        } else {
+          // No database content exists yet.
+          // Keep the existing local data until the first save.
+          setData(getStoredData());
+        }
+      } catch (error) {
+        console.error("Failed to load Spaces & Pricing from DB:", error);
+
+        if (!cancelled) {
+          setSavedMessage("Could not load from database. Check your server.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const showMessage = (message) => {
+    setSavedMessage(message);
+    window.setTimeout(() => setSavedMessage(""), 3000);
+  };
 
   const updateSection = (key, value) => {
     setData((prev) => ({
       ...prev,
-
-      section: {
-        ...prev.section,
-        [key]: value,
-      },
+      section: { ...prev.section, [key]: value },
     }));
   };
 
   const updateTypography = (group, value) => {
     setData((prev) => ({
       ...prev,
-
       typography: {
         ...prev.typography,
         [group]: value,
@@ -336,20 +349,15 @@ const SpacesPricingEditor = () => {
         [key]: value,
       };
 
-      return {
-        ...prev,
-        amenities,
-      };
+      return { ...prev, amenities };
     });
   };
 
   const addAmenity = () => {
     setData((prev) => ({
       ...prev,
-
       amenities: [
         ...prev.amenities,
-
         {
           icon: "clock",
           text: "New Amenity",
@@ -362,8 +370,7 @@ const SpacesPricingEditor = () => {
   const removeAmenity = (index) => {
     setData((prev) => ({
       ...prev,
-
-      amenities: prev.amenities.filter((_, itemIndex) => itemIndex !== index),
+      amenities: prev.amenities.filter((_, i) => i !== index),
     }));
 
     setOpenAmenity(null);
@@ -378,80 +385,54 @@ const SpacesPricingEditor = () => {
         [key]: value,
       };
 
-      return {
-        ...prev,
-        [period]: plans,
-      };
+      return { ...prev, [period]: plans };
     });
   };
 
   const updateFeature = (period, planIndex, featureIndex, value) => {
     setData((prev) => {
       const plans = [...prev[period]];
-
-      const plan = {
-        ...plans[planIndex],
-      };
-
-      const features = [...plan.features];
+      const plan = { ...plans[planIndex] };
+      const features = [...(plan.features || [])];
 
       features[featureIndex] = value;
-
       plan.features = features;
-
       plans[planIndex] = plan;
 
-      return {
-        ...prev,
-        [period]: plans,
-      };
+      return { ...prev, [period]: plans };
     });
   };
 
   const addFeature = (period, planIndex) => {
     setData((prev) => {
       const plans = [...prev[period]];
+      const plan = { ...plans[planIndex] };
 
-      const plan = {
-        ...plans[planIndex],
-      };
-
-      plan.features = [...plan.features, "New Feature"];
-
+      plan.features = [...(plan.features || []), "New Feature"];
       plans[planIndex] = plan;
 
-      return {
-        ...prev,
-        [period]: plans,
-      };
+      return { ...prev, [period]: plans };
     });
   };
 
   const removeFeature = (period, planIndex, featureIndex) => {
     setData((prev) => {
       const plans = [...prev[period]];
+      const plan = { ...plans[planIndex] };
 
-      const plan = {
-        ...plans[planIndex],
-      };
-
-      plan.features = plan.features.filter(
+      plan.features = (plan.features || []).filter(
         (_, index) => index !== featureIndex,
       );
 
       plans[planIndex] = plan;
 
-      return {
-        ...prev,
-        [period]: plans,
-      };
+      return { ...prev, [period]: plans };
     });
   };
 
   const addPlan = (period) => {
     setData((prev) => ({
       ...prev,
-
       [period]: [...prev[period], createPlan()],
     }));
   };
@@ -459,8 +440,7 @@ const SpacesPricingEditor = () => {
   const removePlan = (period, index) => {
     setData((prev) => ({
       ...prev,
-
-      [period]: prev[period].filter((_, planIndex) => planIndex !== index),
+      [period]: prev[period].filter((_, i) => i !== index),
     }));
 
     setOpenPlan(null);
@@ -475,17 +455,13 @@ const SpacesPricingEditor = () => {
         [key]: value,
       };
 
-      return {
-        ...prev,
-        galleryImages,
-      };
+      return { ...prev, galleryImages };
     });
   };
 
   const addGallery = () => {
     setData((prev) => ({
       ...prev,
-
       galleryImages: [...prev.galleryImages, createGalleryItem()],
     }));
   };
@@ -493,66 +469,107 @@ const SpacesPricingEditor = () => {
   const removeGallery = (index) => {
     setData((prev) => ({
       ...prev,
-
-      galleryImages: prev.galleryImages.filter(
-        (_, itemIndex) => itemIndex !== index,
-      ),
+      galleryImages: prev.galleryImages.filter((_, i) => i !== index),
     }));
 
     setOpenGallery(null);
   };
 
-  /*
-   * IMPORTANT:
-   * Save the complete editor state to localStorage,
-   * then notify the public SpacesPricing component.
-   */
-  const saveChanges = () => {
+  // Save the complete section content to the database.
+  const saveChanges = async () => {
+    if (isSaving || isLoading) return;
+
+    setIsSaving(true);
+
     try {
-      const serializedData = JSON.stringify(data);
+      const content = mergeData(data);
 
-      localStorage.setItem(STORAGE_KEY, serializedData);
+      const response = await fetch(API_URL, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content }),
+      });
 
-      // Same-tab update.
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.message || `Failed to save (${response.status})`,
+        );
+      }
+
+      const savedData = mergeData(result.content || content);
+
+      setData(savedData);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedData));
+
+      // Notify the public section in the same browser tab.
       window.dispatchEvent(new Event(UPDATE_EVENT));
 
-      setSavedMessage("Spaces & Pricing changes saved successfully.");
-
-      window.setTimeout(() => setSavedMessage(""), 2500);
+      showMessage("Spaces & Pricing changes saved successfully.");
     } catch (error) {
-      console.error("Failed to save Spaces & Pricing data:", error);
-
-      setSavedMessage("Failed to save changes.");
-
-      window.setTimeout(() => setSavedMessage(""), 2500);
+      console.error("Failed to save Spaces & Pricing:", error);
+      showMessage(`Failed to save: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const resetChanges = () => {
+  // Reset by saving DEFAULT_DATA to the database as well.
+  const resetChanges = async () => {
+    if (isSaving || isLoading) return;
+
+    setIsSaving(true);
+
     try {
       const resetData = JSON.parse(JSON.stringify(DEFAULT_DATA));
 
-      setData(resetData);
+      const response = await fetch(API_URL, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content: resetData }),
+      });
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(resetData));
+      const result = await response.json();
 
-      // Immediately update the public
-      // section in the same tab.
+      if (!response.ok) {
+        throw new Error(
+          result.message || `Failed to reset (${response.status})`,
+        );
+      }
+
+      const savedData = mergeData(result.content || resetData);
+
+      setData(savedData);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedData));
+
       window.dispatchEvent(new Event(UPDATE_EVENT));
 
-      setSavedMessage("Spaces & Pricing reset to defaults.");
+      setOpenPlan(null);
+      setOpenAmenity(null);
+      setOpenGallery(null);
 
-      window.setTimeout(() => setSavedMessage(""), 2500);
+      showMessage("Spaces & Pricing reset to defaults.");
     } catch (error) {
-      console.error("Failed to reset Spaces & Pricing data:", error);
-
-      setSavedMessage("Failed to reset changes.");
-
-      window.setTimeout(() => setSavedMessage(""), 2500);
+      console.error("Failed to reset Spaces & Pricing:", error);
+      showMessage(`Failed to reset: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const SectionHeader = ({ title, description, id, open, onClick, action }) => (
+  const SectionHeader = ({
+    title,
+    description,
+    id,
+    open,
+    onClick,
+    action,
+  }) => (
     <div className="border-2 border-black rounded-2xl overflow-hidden bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
       <button
         type="button"
@@ -581,14 +598,15 @@ const SpacesPricingEditor = () => {
       </button>
 
       {open && (
-        <div className="border-t-2 border-black p-5 bg-[#FFFDF9]">{id}</div>
+        <div className="border-t-2 border-black p-5 bg-[#FFFDF9]">
+          {id}
+        </div>
       )}
     </div>
   );
 
   const renderPlanEditor = (period, plan, index) => {
     const key = `${period}-${index}`;
-
     const isOpen = openPlan === key;
 
     return (
@@ -627,7 +645,9 @@ const SpacesPricingEditor = () => {
               <Field label="Plan Name">
                 <TextInput
                   value={plan.name}
-                  onChange={(value) => updatePlan(period, index, "name", value)}
+                  onChange={(value) =>
+                    updatePlan(period, index, "name", value)
+                  }
                 />
               </Field>
 
@@ -684,7 +704,6 @@ const SpacesPricingEditor = () => {
                   className="w-full px-3.5 py-3 bg-white border-2 border-black rounded-xl text-sm font-bold outline-none focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
                 >
                   <option value="false">Standard</option>
-
                   <option value="true">Popular</option>
                 </select>
               </Field>
@@ -731,7 +750,6 @@ const SpacesPricingEditor = () => {
               <div className="flex items-center justify-between gap-3 mb-3">
                 <div>
                   <h4 className="text-sm font-black text-black">Features</h4>
-
                   <p className="text-xs text-black/50 font-semibold mt-0.5">
                     Add, edit or remove features for this plan.
                   </p>
@@ -748,7 +766,7 @@ const SpacesPricingEditor = () => {
               </div>
 
               <div className="space-y-2.5">
-                {plan.features.map((feature, featureIndex) => (
+                {(plan.features || []).map((feature, featureIndex) => (
                   <div key={featureIndex} className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-[#A3E635] border-2 border-black flex items-center justify-center shrink-0">
                       <span className="text-xs font-black">
@@ -760,14 +778,21 @@ const SpacesPricingEditor = () => {
                       <TextInput
                         value={feature}
                         onChange={(value) =>
-                          updateFeature(period, index, featureIndex, value)
+                          updateFeature(
+                            period,
+                            index,
+                            featureIndex,
+                            value,
+                          )
                         }
                       />
                     </div>
 
                     <button
                       type="button"
-                      onClick={() => removeFeature(period, index, featureIndex)}
+                      onClick={() =>
+                        removeFeature(period, index, featureIndex)
+                      }
                       className="w-10 h-10 rounded-xl bg-[#F472B6] border-2 border-black flex items-center justify-center hover:-translate-y-0.5 transition-all shrink-0"
                       aria-label="Remove feature"
                     >
@@ -808,7 +833,7 @@ const SpacesPricingEditor = () => {
         </div>
 
         {/* Section Content */}
-        <div className="space-y-4 ">
+        <div className="space-y-4">
           <SectionHeader
             title="Section Content"
             description="Edit the main heading, description and section colors."
@@ -817,7 +842,7 @@ const SpacesPricingEditor = () => {
               setOpenSection(openSection === "section" ? null : "section")
             }
             id={
-              <div className="space-y-5 ">
+              <div className="space-y-5">
                 <Field label="Section Badge">
                   <TextInput
                     value={data.section.badge}
@@ -868,14 +893,15 @@ const SpacesPricingEditor = () => {
             description="Control the heading and description typography."
             open={openSection === "typography"}
             onClick={() =>
-              setOpenSection(openSection === "typography" ? null : "typography")
+              setOpenSection(
+                openSection === "typography" ? null : "typography",
+              )
             }
             id={
               <div className="space-y-8">
                 <div>
                   <div className="mb-4">
                     <h4 className="text-sm font-black">Section Title</h4>
-
                     <p className="text-xs text-black/50 font-semibold mt-1">
                       Typography for “Choose Your Workspace”.
                     </p>
@@ -890,7 +916,6 @@ const SpacesPricingEditor = () => {
                 <div className="border-t-2 border-black/10 pt-6">
                   <div className="mb-4">
                     <h4 className="text-sm font-black">Description</h4>
-
                     <p className="text-xs text-black/50 font-semibold mt-1">
                       Typography for the section description.
                     </p>
@@ -898,7 +923,9 @@ const SpacesPricingEditor = () => {
 
                   <TypographyControls
                     value={data.typography.description}
-                    onChange={(value) => updateTypography("description", value)}
+                    onChange={(value) =>
+                      updateTypography("description", value)
+                    }
                   />
                 </div>
               </div>
@@ -937,7 +964,9 @@ const SpacesPricingEditor = () => {
                     >
                       <button
                         type="button"
-                        onClick={() => setOpenAmenity(isOpen ? null : index)}
+                        onClick={() =>
+                          setOpenAmenity(isOpen ? null : index)
+                        }
                         className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-[#FFFDF9]"
                       >
                         <GripVertical className="w-4 h-4 text-black/40" />
@@ -980,7 +1009,6 @@ const SpacesPricingEditor = () => {
                                   }`}
                                 >
                                   <Icon className="w-5 h-5" />
-
                                   {label}
                                 </button>
                               ))}
@@ -1102,7 +1130,9 @@ const SpacesPricingEditor = () => {
                     >
                       <button
                         type="button"
-                        onClick={() => setOpenGallery(isOpen ? null : index)}
+                        onClick={() =>
+                          setOpenGallery(isOpen ? null : index)
+                        }
                         className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-[#FFFDF9]"
                       >
                         <GripVertical className="w-4 h-4 text-black/40" />
@@ -1195,7 +1225,13 @@ const SpacesPricingEditor = () => {
         <EditorActions
           onSave={saveChanges}
           onReset={resetChanges}
-          savedMessage={savedMessage}
+          savedMessage={
+            isLoading
+              ? "Loading Spaces & Pricing..."
+              : isSaving
+                ? "Saving to database..."
+                : savedMessage
+          }
         />
       </div>
     </div>

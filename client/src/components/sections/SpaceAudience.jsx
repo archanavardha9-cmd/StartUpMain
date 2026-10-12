@@ -9,6 +9,14 @@ import {
   Zap,
 } from 'lucide-react';
 
+const STORAGE_KEY = 'startupCafeSpaceAudience';
+
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL || 'http://localhost:5000'
+).replace(/\/+$/, '');
+
+const API_URL = `${API_BASE_URL}/api/cms/space-audience`;
+
 const DEFAULT_DATA = {
   section: {
     badge: 'Space & Audience',
@@ -120,8 +128,6 @@ const ICONS = {
   Zap,
 };
 
-const STORAGE_KEY = 'startupCafeSpaceAudience';
-
 const mergeData = (parsed = {}) => ({
   ...DEFAULT_DATA,
   ...parsed,
@@ -146,29 +152,69 @@ const mergeData = (parsed = {}) => ({
     : DEFAULT_DATA.cards,
 });
 
+const getFallbackData = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+
+    return saved ? mergeData(JSON.parse(saved)) : mergeData();
+  } catch (error) {
+    console.error('Failed to read fallback Space & Audience data:', error);
+    return mergeData();
+  }
+};
+
+const fetchSpaceAudience = async () => {
+  const response = await fetch(API_URL);
+
+  if (!response.ok) {
+    throw new Error(`Failed to load Space & Audience (${response.status})`);
+  }
+
+  const result = await response.json();
+
+  if (!result?.content) {
+    throw new Error('Space & Audience content has not been saved yet.');
+  }
+
+  return mergeData(result.content);
+};
+
 const SpaceAudience = ({ previewData, isPreview = false }) => {
-  const [savedData, setSavedData] = useState(DEFAULT_DATA);
+  const [savedData, setSavedData] = useState(getFallbackData);
 
   useEffect(() => {
-    // The editor preview uses its own live form data.
-    if (isPreview) return undefined;
+    // Keep the editor's live preview independent of the API.
+    if (isPreview || previewData !== undefined) {
+      return undefined;
+    }
 
-    const loadData = () => {
+    let cancelled = false;
+
+    const loadData = async () => {
       try {
-        const saved = localStorage.getItem(STORAGE_KEY);
+        const latestData = await fetchSpaceAudience();
 
-        setSavedData(saved ? mergeData(JSON.parse(saved)) : DEFAULT_DATA);
+        if (!cancelled) {
+          setSavedData(latestData);
+        }
       } catch (error) {
         console.error(
-          'Failed to load Space & Audience data:',
+          'Failed to load Space & Audience from MongoDB:',
           error,
         );
-        setSavedData(DEFAULT_DATA);
+
+        if (!cancelled) {
+          setSavedData(getFallbackData());
+        }
       }
     };
 
     loadData();
 
+    // Refresh from the database when returning to the page.
+    window.addEventListener('focus', loadData);
+
+    // Re-fetch if the Admin Editor saves from another tab.
     const handleStorage = (event) => {
       if (event.key === STORAGE_KEY || event.key === null) {
         loadData();
@@ -177,16 +223,18 @@ const SpaceAudience = ({ previewData, isPreview = false }) => {
 
     window.addEventListener('storage', handleStorage);
 
-    // Keeps the homepage in sync with edits made in another tab.
-    const interval = setInterval(loadData, 500);
-
     return () => {
+      cancelled = true;
+      window.removeEventListener('focus', loadData);
       window.removeEventListener('storage', handleStorage);
-      clearInterval(interval);
     };
-  }, [isPreview]);
+  }, [isPreview, previewData]);
 
-  const data = mergeData(previewData || savedData);
+  const data =
+    previewData !== undefined
+      ? mergeData(previewData)
+      : mergeData(savedData);
+
   const { section, typography, cards } = data;
 
   return (
@@ -297,8 +345,7 @@ const SpaceAudience = ({ previewData, isPreview = false }) => {
                     fontSize: `${
                       typography.cardDescription.fontSize || 12
                     }px`,
-                    fontWeight:
-                      typography.cardDescription.fontWeight || 500,
+                    fontWeight: typography.cardDescription.fontWeight || 500,
                     lineHeight:
                       typography.cardDescription.lineHeight || 1.625,
                     letterSpacing: `${
