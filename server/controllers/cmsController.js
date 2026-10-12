@@ -1,6 +1,6 @@
-import CmsContent from "../models/CmsContent.js";
+const CmsContent = require("../models/CmsContent");
 
-export const getSectionContent = async (req, res) => {
+const getSectionContent = async (req, res) => {
   try {
     const { section } = req.params;
 
@@ -14,7 +14,7 @@ export const getSectionContent = async (req, res) => {
   }
 };
 
-export const updateSectionContent = async (req, res) => {
+const updateSectionContent = async (req, res) => {
   try {
     const { section } = req.params;
 
@@ -36,4 +36,9 @@ export const updateSectionContent = async (req, res) => {
       message: error.message,
     });
   }
+};
+
+module.exports = {
+  getSectionContent,
+  updateSectionContent,
 };

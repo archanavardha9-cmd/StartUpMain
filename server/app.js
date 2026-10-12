@@ -5,6 +5,9 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const leadRoutes = require('./routes/leadRoutes');
 const errorHandler = require('./middleware/errorHandler');
+const cmsRoutes = require('./routes/cmsRoutes');
+
+console.log("CMS ROUTES LOADED");
 
 const app = express();
 
@@ -32,7 +35,7 @@ app.use(
       }
       return callback(new Error('CORS Policy restriction'), false);
     },
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   })
@@ -68,6 +71,7 @@ const leadLimiter = rateLimit({
 
 app.use('/api/', limiter);
 app.use('/api/leads', leadLimiter, leadRoutes);
+app.use('/api/cms', cmsRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

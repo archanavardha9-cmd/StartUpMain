@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import {
   Armchair,
@@ -6,11 +7,6 @@ import {
   Clock,
   UserCheck,
   Zap,
-  Plus,
-  Trash2,
-  Copy,
-  ChevronUp,
-  ChevronDown,
 } from 'lucide-react';
 
 const DEFAULT_DATA = {
@@ -126,95 +122,72 @@ const ICONS = {
 
 const STORAGE_KEY = 'startupCafeSpaceAudience';
 
-const SpaceAudience = () => {
-  const [data, setData] = useState(DEFAULT_DATA);
+const mergeData = (parsed = {}) => ({
+  ...DEFAULT_DATA,
+  ...parsed,
 
-  const loadData = () => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+  section: {
+    ...DEFAULT_DATA.section,
+    ...(parsed.section || {}),
+  },
 
-      if (saved) {
-        const parsed = JSON.parse(saved);
+  typography: Object.fromEntries(
+    Object.keys(DEFAULT_DATA.typography).map((key) => [
+      key,
+      {
+        ...DEFAULT_DATA.typography[key],
+        ...(parsed.typography?.[key] || {}),
+      },
+    ]),
+  ),
 
-        setData({
-          ...DEFAULT_DATA,
-          ...parsed,
-          section: {
-            ...DEFAULT_DATA.section,
-            ...(parsed.section || {}),
-          },
-          typography: {
-            ...DEFAULT_DATA.typography,
-            ...(parsed.typography || {}),
-          },
-          cards: Array.isArray(parsed.cards)
-            ? parsed.cards
-            : DEFAULT_DATA.cards,
-        });
-      } else {
-        setData(DEFAULT_DATA);
-      }
-    } catch (error) {
-      console.error('Failed to load Space & Audience data:', error);
-      setData(DEFAULT_DATA);
-    }
-  };
+  cards: Array.isArray(parsed.cards)
+    ? parsed.cards
+    : DEFAULT_DATA.cards,
+});
+
+const SpaceAudience = ({ previewData, isPreview = false }) => {
+  const [savedData, setSavedData] = useState(DEFAULT_DATA);
 
   useEffect(() => {
+    // The editor preview uses its own live form data.
+    if (isPreview) return undefined;
+
+    const loadData = () => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+
+        setSavedData(saved ? mergeData(JSON.parse(saved)) : DEFAULT_DATA);
+      } catch (error) {
+        console.error(
+          'Failed to load Space & Audience data:',
+          error,
+        );
+        setSavedData(DEFAULT_DATA);
+      }
+    };
+
     loadData();
 
     const handleStorage = (event) => {
-      if (event.key === STORAGE_KEY) {
+      if (event.key === STORAGE_KEY || event.key === null) {
         loadData();
       }
     };
 
     window.addEventListener('storage', handleStorage);
 
-    const interval = setInterval(() => {
-      const saved = localStorage.getItem(STORAGE_KEY);
-
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-
-          setData((current) => {
-            const currentString = JSON.stringify(current);
-            const nextData = {
-              ...DEFAULT_DATA,
-              ...parsed,
-              section: {
-                ...DEFAULT_DATA.section,
-                ...(parsed.section || {}),
-              },
-              typography: {
-                ...DEFAULT_DATA.typography,
-                ...(parsed.typography || {}),
-              },
-              cards: Array.isArray(parsed.cards)
-                ? parsed.cards
-                : DEFAULT_DATA.cards,
-            };
-
-            return JSON.stringify(nextData) !== currentString
-              ? nextData
-              : current;
-          });
-        } catch {
-          // Keep current state if localStorage contains invalid data.
-        }
-      }
-    }, 500);
+    // Keeps the homepage in sync with edits made in another tab.
+    const interval = setInterval(loadData, 500);
 
     return () => {
       window.removeEventListener('storage', handleStorage);
       clearInterval(interval);
     };
-  }, []);
+  }, [isPreview]);
 
-  const section = data.section || DEFAULT_DATA.section;
-  const typography = data.typography || DEFAULT_DATA.typography;
-  const cards = data.cards || DEFAULT_DATA.cards;
+  const data = mergeData(previewData || savedData);
+  const { section, typography, cards } = data;
 
   return (
     <section
@@ -230,11 +203,11 @@ const SpaceAudience = () => {
             style={{
               backgroundColor: section.badgeColor || '#FFDE4D',
               color: section.headingColor || '#000000',
-              fontFamily: typography.badge?.fontFamily || 'Inter',
-              fontSize: `${typography.badge?.fontSize || 12}px`,
-              fontWeight: typography.badge?.fontWeight || 900,
-              lineHeight: typography.badge?.lineHeight || 1.5,
-              letterSpacing: `${typography.badge?.letterSpacing || 0}px`,
+              fontFamily: typography.badge.fontFamily || 'Inter',
+              fontSize: `${typography.badge.fontSize || 12}px`,
+              fontWeight: typography.badge.fontWeight || 900,
+              lineHeight: typography.badge.lineHeight || 1.5,
+              letterSpacing: `${typography.badge.letterSpacing || 0}px`,
             }}
           >
             {section.badge}
@@ -244,14 +217,16 @@ const SpaceAudience = () => {
             className="text-2xl sm:text-3xl tracking-tight mt-5"
             style={{
               color: section.headingColor || '#000000',
-              fontFamily: typography.heading?.fontFamily || 'Inter',
+              fontFamily: typography.heading.fontFamily || 'Inter',
               fontSize: `clamp(${Math.min(
-                typography.heading?.fontSize || 30,
-                26
-              )}px, 2.5vw, ${typography.heading?.fontSize || 30}px)`,
-              fontWeight: typography.heading?.fontWeight || 900,
-              lineHeight: typography.heading?.lineHeight || 1.2,
-              letterSpacing: `${typography.heading?.letterSpacing || 0}px`,
+                typography.heading.fontSize || 30,
+                26,
+              )}px, 2.5vw, ${
+                typography.heading.fontSize || 30
+              }px)`,
+              fontWeight: typography.heading.fontWeight || 900,
+              lineHeight: typography.heading.lineHeight || 1.2,
+              letterSpacing: `${typography.heading.letterSpacing || 0}px`,
             }}
           >
             {section.heading}
@@ -261,16 +236,14 @@ const SpaceAudience = () => {
             className="text-xs sm:text-sm mt-2"
             style={{
               color: section.descriptionColor || '#000000',
-              fontFamily:
-                typography.description?.fontFamily || 'Inter',
+              fontFamily: typography.description.fontFamily || 'Inter',
               fontSize: `clamp(12px, 1.2vw, ${
-                typography.description?.fontSize || 14
+                typography.description.fontSize || 14
               }px)`,
-              fontWeight: typography.description?.fontWeight || 600,
-              lineHeight:
-                typography.description?.lineHeight || 1.5,
+              fontWeight: typography.description.fontWeight || 600,
+              lineHeight: typography.description.lineHeight || 1.5,
               letterSpacing: `${
-                typography.description?.letterSpacing || 0
+                typography.description.letterSpacing || 0
               }px`,
             }}
           >
@@ -303,17 +276,12 @@ const SpaceAudience = () => {
                   className="mb-1.5"
                   style={{
                     color: '#000000',
-                    fontFamily:
-                      typography.cardTitle?.fontFamily || 'Inter',
-                    fontSize: `${
-                      typography.cardTitle?.fontSize || 14
-                    }px`,
-                    fontWeight:
-                      typography.cardTitle?.fontWeight || 900,
-                    lineHeight:
-                      typography.cardTitle?.lineHeight || 1.5,
+                    fontFamily: typography.cardTitle.fontFamily || 'Inter',
+                    fontSize: `${typography.cardTitle.fontSize || 14}px`,
+                    fontWeight: typography.cardTitle.fontWeight || 900,
+                    lineHeight: typography.cardTitle.lineHeight || 1.5,
                     letterSpacing: `${
-                      typography.cardTitle?.letterSpacing || 0
+                      typography.cardTitle.letterSpacing || 0
                     }px`,
                   }}
                 >
@@ -325,18 +293,16 @@ const SpaceAudience = () => {
                   style={{
                     color: '#000000',
                     fontFamily:
-                      typography.cardDescription?.fontFamily ||
-                      'Inter',
+                      typography.cardDescription.fontFamily || 'Inter',
                     fontSize: `${
-                      typography.cardDescription?.fontSize || 12
+                      typography.cardDescription.fontSize || 12
                     }px`,
                     fontWeight:
-                      typography.cardDescription?.fontWeight || 500,
+                      typography.cardDescription.fontWeight || 500,
                     lineHeight:
-                      typography.cardDescription?.lineHeight ||
-                      1.625,
+                      typography.cardDescription.lineHeight || 1.625,
                     letterSpacing: `${
-                      typography.cardDescription?.letterSpacing || 0
+                      typography.cardDescription.letterSpacing || 0
                     }px`,
                   }}
                 >

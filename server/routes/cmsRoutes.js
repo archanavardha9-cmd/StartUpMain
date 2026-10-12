@@ -1,14 +1,18 @@
-import express from "express";
+const express = require("express");
 
-import {
+const {
   getSectionContent,
   updateSectionContent,
-} from "../controllers/cmsController.js";
+} = require("../controllers/cmsController");
 
 const router = express.Router();
+
+router.get("/test", (req, res) => {
+  res.json({ message: "CMS route working" });
+});
 
 router.get("/:section", getSectionContent);
 
 router.put("/:section", updateSectionContent);
 
-export default router;
+module.exports = router;

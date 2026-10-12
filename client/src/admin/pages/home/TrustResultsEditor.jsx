@@ -1,13 +1,15 @@
-import React, { useEffect, useState } from "react";
-import { Plus, Trash2, Copy, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, Copy, ChevronDown, ChevronUp, Eye } from "lucide-react";
 
 import Field from "../../components/Field";
 import TextInput from "../../components/TextInput";
 import ColorControl from "../../components/ColorControl";
 import TypographyControls from "../../components/TypographyControls";
 import EditorActions from "../../components/EditorActions";
+import TrustResults from "../../../components/sections/TrustResults";
 
 const STORAGE_KEY = "startupCafeTrustResults";
+const PREVIEW_DESIGN_WIDTH = 800;
 
 const DEFAULT_DATA = {
   section: {
@@ -158,41 +160,125 @@ const DEFAULT_DATA = {
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
-const mergeData = (parsed) => ({
-  ...clone(DEFAULT_DATA),
-  ...parsed,
+const mergeData = (parsed = {}) => {
+  const defaults = clone(DEFAULT_DATA);
 
-  section: {
-    ...clone(DEFAULT_DATA).section,
-    ...(parsed?.section || {}),
-  },
+  return {
+    ...defaults,
+    ...parsed,
 
-  typography: {
-    ...clone(DEFAULT_DATA).typography,
-    ...(parsed?.typography || {}),
-  },
+    section: {
+      ...defaults.section,
+      ...(parsed.section || {}),
+    },
 
-  colors: {
-    ...clone(DEFAULT_DATA).colors,
-    ...(parsed?.colors || {}),
-  },
+    typography: Object.fromEntries(
+      Object.entries(defaults.typography).map(([key, value]) => [
+        key,
+        {
+          ...value,
+          ...(parsed.typography?.[key] || {}),
+        },
+      ]),
+    ),
 
-  stats: Array.isArray(parsed?.stats)
-    ? parsed.stats
-    : clone(DEFAULT_DATA).stats,
+    colors: {
+      ...defaults.colors,
+      ...(parsed.colors || {}),
+    },
 
-  reviews: Array.isArray(parsed?.reviews)
-    ? parsed.reviews
-    : clone(DEFAULT_DATA).reviews,
+    stats: Array.isArray(parsed.stats)
+      ? parsed.stats.map((item) => ({
+          value: "",
+          label: "",
+          color: "#000000",
+          backgroundColor: "#FFDE4D",
+          ...item,
+        }))
+      : defaults.stats,
 
-  logos: Array.isArray(parsed?.logos)
-    ? parsed.logos
-    : clone(DEFAULT_DATA).logos,
-});
+    reviews: Array.isArray(parsed.reviews)
+      ? parsed.reviews.map((item) => ({
+          name: "",
+          role: "",
+          text: "",
+          ...item,
+        }))
+      : defaults.reviews,
+
+    logos: Array.isArray(parsed.logos) ? parsed.logos : defaults.logos,
+  };
+};
+
+/* -------------------------------------------------------
+   SCALED LIVE PREVIEW
+------------------------------------------------------- */
+
+const ScaledTrustResultsPreview = ({ data }) => {
+  const containerRef = useRef(null);
+  const contentRef = useRef(null);
+
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+
+    if (!container || !content) return undefined;
+
+    const updateSizes = () => {
+      setContainerWidth(container.clientWidth);
+      setContentHeight(content.offsetHeight);
+    };
+
+    updateSizes();
+
+    const observer = new ResizeObserver(updateSizes);
+
+    observer.observe(container);
+    observer.observe(content);
+
+    return () => observer.disconnect();
+  }, [data]);
+
+  const scale =
+    containerWidth > 0 ? Math.min(1, containerWidth / PREVIEW_DESIGN_WIDTH) : 0;
+
+  return (
+    <div ref={containerRef} className="w-full overflow-hidden">
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: `${contentHeight * scale}px`,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          ref={contentRef}
+          style={{
+            width: `${PREVIEW_DESIGN_WIDTH}px`,
+            position: "absolute",
+            top: 0,
+            left: 0,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+          }}
+        >
+          <TrustResults previewData={data} isPreview />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* -------------------------------------------------------
+   MAIN EDITOR
+------------------------------------------------------- */
 
 const TrustResultsEditor = () => {
-  const [formData, setFormData] = useState(clone(DEFAULT_DATA));
-
+  const [formData, setFormData] = useState(() => clone(DEFAULT_DATA));
   const [openStat, setOpenStat] = useState(null);
   const [openReview, setOpenReview] = useState(null);
   const [savedMessage, setSavedMessage] = useState("");
@@ -243,12 +329,7 @@ const TrustResultsEditor = () => {
     setFormData((prev) => ({
       ...prev,
       stats: prev.stats.map((stat, statIndex) =>
-        statIndex === index
-          ? {
-              ...stat,
-              [key]: value,
-            }
-          : stat,
+        statIndex === index ? { ...stat, [key]: value } : stat,
       ),
     }));
   };
@@ -257,12 +338,7 @@ const TrustResultsEditor = () => {
     setFormData((prev) => ({
       ...prev,
       reviews: prev.reviews.map((review, reviewIndex) =>
-        reviewIndex === index
-          ? {
-              ...review,
-              [key]: value,
-            }
-          : review,
+        reviewIndex === index ? { ...review, [key]: value } : review,
       ),
     }));
   };
@@ -311,10 +387,7 @@ const TrustResultsEditor = () => {
 
       stats.splice(index + 1, 0, duplicated);
 
-      return {
-        ...prev,
-        stats,
-      };
+      return { ...prev, stats };
     });
 
     setOpenStat(index + 1);
@@ -354,10 +427,7 @@ const TrustResultsEditor = () => {
 
       reviews.splice(index + 1, 0, duplicated);
 
-      return {
-        ...prev,
-        reviews,
-      };
+      return { ...prev, reviews };
     });
 
     setOpenReview(index + 1);
@@ -389,15 +459,12 @@ const TrustResultsEditor = () => {
       );
 
       setSavedMessage("Our Impact changes saved successfully.");
-
-      setTimeout(() => {
-        setSavedMessage("");
-      }, 2500);
     } catch (error) {
       console.error("Failed to save Trust & Results data:", error);
-
       setSavedMessage("Unable to save changes.");
     }
+
+    setTimeout(() => setSavedMessage(""), 2500);
   };
 
   const handleReset = () => {
@@ -407,533 +474,592 @@ const TrustResultsEditor = () => {
     setOpenStat(null);
     setOpenReview(null);
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(resetData));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(resetData));
 
-    window.dispatchEvent(
-      new StorageEvent("storage", {
-        key: STORAGE_KEY,
-        newValue: JSON.stringify(resetData),
-      }),
-    );
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: STORAGE_KEY,
+          newValue: JSON.stringify(resetData),
+        }),
+      );
 
-    setSavedMessage("Our Impact reset to defaults.");
+      setSavedMessage("Our Impact reset to defaults.");
+    } catch (error) {
+      console.error("Failed to reset Trust & Results data:", error);
+      setSavedMessage("Unable to reset changes.");
+    }
 
-    setTimeout(() => {
-      setSavedMessage("");
-    }, 2500);
+    setTimeout(() => setSavedMessage(""), 2500);
   };
 
   return (
     <div className="min-h-screen bg-[#F5F5F0] p-3 sm:p-5 lg:p-7">
-      <div className="max-w-[1100px] pb-28 space-y-6">
-        {/* Header */}
-        <div className="mb-7">
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-black mt-2">
-            Trust & Results
-          </h1>
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 items-start">
+        {/* LEFT: EDITOR */}
 
-          <p className="text-sm font-semibold text-black/55 mt-2 max-w-2xl">
-            Manage the Our Impact statistics, customer reviews, professional
-            teams and section styling.
-          </p>
-        </div>
+        <div className="min-w-0 max-w-[1100px] pb-28 space-y-6">
+          <div className="mb-7">
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-black mt-2">
+              Trust & Results
+            </h1>
 
-        {/* Section Content */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#F472B6]">
-            <h2 className="text-lg font-black text-black">Section Content</h2>
-
-            <p className="text-xs font-semibold text-black/65 mt-1">
-              Edit the heading shown at the top of the section.
+            <p className="text-sm font-semibold text-black/55 mt-2 max-w-2xl">
+              Manage the Our Impact statistics, customer reviews, professional
+              teams and section styling.
             </p>
           </div>
 
-          <div className="p-5 sm:p-6 space-y-6">
-            <Field label="Badge Text">
-              <TextInput
-                value={formData.section.badge}
-                onChange={(value) => updateSection("badge", value)}
-              />
-            </Field>
+          {/* SECTION CONTENT */}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Field label="Heading — First Part">
+          <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+            <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#F472B6]">
+              <h2 className="text-lg font-black text-black">Section Content</h2>
+              <p className="text-xs font-semibold text-black/65 mt-1">
+                Edit the heading shown at the top of the section.
+              </p>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-6">
+              <Field label="Badge Text">
                 <TextInput
-                  value={formData.section.headingBefore}
-                  onChange={(value) => updateSection("headingBefore", value)}
+                  value={formData.section.badge}
+                  onChange={(value) => updateSection("badge", value)}
                 />
               </Field>
 
-              <Field label="Heading — Highlight">
-                <TextInput
-                  value={formData.section.headingHighlight}
-                  onChange={(value) => updateSection("headingHighlight", value)}
-                />
-              </Field>
-            </div>
-          </div>
-        </section>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Field label="Heading — First Part">
+                  <TextInput
+                    value={formData.section.headingBefore}
+                    onChange={(value) => updateSection("headingBefore", value)}
+                  />
+                </Field>
 
-        {/* Section Colors */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#FFDE4D]">
-            <h2 className="text-lg font-black text-black">Section Colors</h2>
-          </div>
-
-          <div className="p-5 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ColorControl
-              label="Section Background"
-              value={formData.section.backgroundColor}
-              onChange={(value) => updateSection("backgroundColor", value)}
-            />
-
-            <ColorControl
-              label="Badge Background"
-              value={formData.section.badgeColor}
-              onChange={(value) => updateSection("badgeColor", value)}
-            />
-
-            <ColorControl
-              label="Heading Color"
-              value={formData.section.headingColor}
-              onChange={(value) => updateSection("headingColor", value)}
-            />
-
-            <ColorControl
-              label="Heading Highlight Color"
-              value={formData.section.highlightColor}
-              onChange={(value) => updateSection("highlightColor", value)}
-            />
-          </div>
-        </section>
-
-        {/* Typography */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#C084FC]">
-            <h2 className="text-lg font-black text-black">Typography</h2>
-
-            <p className="text-xs font-semibold text-black/65 mt-1">
-              Control typography for each content level.
-            </p>
-          </div>
-
-          <div className="p-5 sm:p-6 space-y-8">
-            {[
-              ["badge", "Badge"],
-              ["heading", "Main Heading"],
-              ["statValue", "Stat Value"],
-              ["statLabel", "Stat Label"],
-              ["review", "Review Text"],
-              ["reviewerName", "Reviewer Name"],
-              ["reviewerRole", "Reviewer Role"],
-              ["teamsLabel", "Teams Label"],
-              ["teamLogo", "Team Badge"],
-            ].map(([key, label], index) => (
-              <div
-                key={key}
-                className={index === 0 ? "" : "border-t-2 border-black/10 pt-7"}
-              >
-                <h3 className="text-sm font-black text-black mb-4">{label}</h3>
-
-                <TypographyControls
-                  value={formData.typography[key]}
-                  onChange={(value) => updateTypography(key, value)}
-                />
+                <Field label="Heading — Highlight">
+                  <TextInput
+                    value={formData.section.headingHighlight}
+                    onChange={(value) =>
+                      updateSection("headingHighlight", value)
+                    }
+                  />
+                </Field>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Stats */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#A3E635]">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-black text-black">
-                  Impact Statistics
-                </h2>
-
-                <p className="text-xs font-semibold text-black/65 mt-1">
-                  Manage the metric cards shown on the left.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={addStat}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FFDE4D] border-2 border-black rounded-xl text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                Add Stat
-              </button>
             </div>
-          </div>
+          </section>
 
-          <div className="p-4 sm:p-6 space-y-3">
-            {formData.stats.map((stat, index) => {
-              const isOpen = openStat === index;
+          {/* SECTION COLORS */}
 
-              return (
-                <div
-                  key={index}
-                  className="border-2 border-black rounded-2xl overflow-hidden bg-[#FFFDF9]"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setOpenStat(isOpen ? null : index)}
-                    className="w-full flex items-center gap-3 p-4 text-left hover:bg-white transition-colors"
-                  >
-                    <div
-                      className="w-10 h-10 rounded-lg border-2 border-black flex items-center justify-center shrink-0 shadow-[1.5px_1.5px_0px_0px_rgba(0,0,0,1)]"
-                      style={{
-                        backgroundColor: stat.backgroundColor || "#FFDE4D",
-                      }}
-                    >
-                      <span className="text-xs font-black">{index + 1}</span>
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black truncate">
-                        {stat.value || "0"}
-                      </p>
-
-                      <p className="text-[11px] font-semibold text-black/45 truncate mt-0.5">
-                        {stat.label || "Untitled Metric"}
-                      </p>
-                    </div>
-
-                    {isOpen ? (
-                      <ChevronUp className="w-5 h-5 shrink-0" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 shrink-0" />
-                    )}
-                  </button>
-
-                  {isOpen && (
-                    <div className="border-t-2 border-black p-5 sm:p-6 bg-white space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Field label="Value">
-                          <TextInput
-                            value={stat.value}
-                            onChange={(value) =>
-                              updateStat(index, "value", value)
-                            }
-                          />
-                        </Field>
-
-                        <Field label="Label">
-                          <TextInput
-                            value={stat.label}
-                            onChange={(value) =>
-                              updateStat(index, "label", value)
-                            }
-                          />
-                        </Field>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <ColorControl
-                          label="Card Background"
-                          value={stat.backgroundColor}
-                          onChange={(value) =>
-                            updateStat(index, "backgroundColor", value)
-                          }
-                        />
-
-                        <ColorControl
-                          label="Value Color"
-                          value={stat.color}
-                          onChange={(value) =>
-                            updateStat(index, "color", value)
-                          }
-                        />
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t-2 border-black/10">
-                        <button
-                          type="button"
-                          onClick={() => duplicateStat(index)}
-                          className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-black rounded-xl text-xs font-black hover:bg-[#A3E635] transition-all"
-                        >
-                          <Copy className="w-4 h-4" />
-                          Duplicate
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => deleteStat(index)}
-                          className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-black rounded-xl text-xs font-black hover:bg-[#F472B6] transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Reviews */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#F472B6]">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-black text-black">
-                  Customer Reviews
-                </h2>
-
-                <p className="text-xs font-semibold text-black/65 mt-1">
-                  Manage the testimonials used by the review carousel.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={addReview}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#A3E635] border-2 border-black rounded-xl text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                Add Review
-              </button>
+          <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+            <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#FFDE4D]">
+              <h2 className="text-lg font-black text-black">Section Colors</h2>
             </div>
-          </div>
 
-          <div className="p-4 sm:p-6 space-y-3">
-            {formData.reviews.map((review, index) => {
-              const isOpen = openReview === index;
-
-              return (
-                <div
-                  key={index}
-                  className="border-2 border-black rounded-2xl overflow-hidden bg-[#FFFDF9]"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setOpenReview(isOpen ? null : index)}
-                    className="w-full flex items-center gap-3 p-4 text-left hover:bg-white transition-colors"
-                  >
-                    <div className="w-10 h-10 rounded-lg border-2 border-black bg-[#FFDE4D] flex items-center justify-center shrink-0 shadow-[1.5px_1.5px_0px_0px_rgba(0,0,0,1)]">
-                      <span className="text-xs font-black">{index + 1}</span>
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black truncate">
-                        {review.name || "Unnamed Reviewer"}
-                      </p>
-
-                      <p className="text-[11px] font-semibold text-black/45 truncate mt-0.5">
-                        {review.role || "No role specified"}
-                      </p>
-                    </div>
-
-                    {isOpen ? (
-                      <ChevronUp className="w-5 h-5 shrink-0" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 shrink-0" />
-                    )}
-                  </button>
-
-                  {isOpen && (
-                    <div className="border-t-2 border-black p-5 sm:p-6 bg-white space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Field label="Reviewer Name">
-                          <TextInput
-                            value={review.name}
-                            onChange={(value) =>
-                              updateReview(index, "name", value)
-                            }
-                          />
-                        </Field>
-
-                        <Field label="Role">
-                          <TextInput
-                            value={review.role}
-                            onChange={(value) =>
-                              updateReview(index, "role", value)
-                            }
-                          />
-                        </Field>
-                      </div>
-
-                      <Field label="Review Text">
-                        <textarea
-                          value={review.text}
-                          onChange={(e) =>
-                            updateReview(index, "text", e.target.value)
-                          }
-                          rows={6}
-                          className="w-full px-3.5 py-3 bg-white border-2 border-black rounded-xl text-sm font-semibold text-black outline-none resize-y placeholder:text-black/30 focus:bg-[#FFFDF9] focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all"
-                        />
-                      </Field>
-
-                      <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t-2 border-black/10">
-                        <button
-                          type="button"
-                          onClick={() => duplicateReview(index)}
-                          className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-black rounded-xl text-xs font-black hover:bg-[#A3E635] transition-all"
-                        >
-                          <Copy className="w-4 h-4" />
-                          Duplicate
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => deleteReview(index)}
-                          className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-black rounded-xl text-xs font-black hover:bg-[#F472B6] transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Teams */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#FFDE4D]">
-            <h2 className="text-lg font-black text-black">
-              Professional Teams
-            </h2>
-
-            <p className="text-xs font-semibold text-black/65 mt-1">
-              Manage the label and company badges displayed below the reviews.
-            </p>
-          </div>
-
-          <div className="p-5 sm:p-6 space-y-6">
-            <Field label="Section Label">
-              <TextInput
-                value={formData.teamsLabel}
-                onChange={(value) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    teamsLabel: value,
-                  }))
-                }
+            <div className="p-5 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ColorControl
+                label="Section Background"
+                value={formData.section.backgroundColor}
+                onChange={(value) => updateSection("backgroundColor", value)}
               />
-            </Field>
 
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-black text-black">
-                    Company Badges
+              <ColorControl
+                label="Badge Background"
+                value={formData.section.badgeColor}
+                onChange={(value) => updateSection("badgeColor", value)}
+              />
+
+              <ColorControl
+                label="Heading Color"
+                value={formData.section.headingColor}
+                onChange={(value) => updateSection("headingColor", value)}
+              />
+
+              <ColorControl
+                label="Heading Highlight Color"
+                value={formData.section.highlightColor}
+                onChange={(value) => updateSection("highlightColor", value)}
+              />
+            </div>
+          </section>
+
+          {/* TYPOGRAPHY */}
+
+          <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+            <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#C084FC]">
+              <h2 className="text-lg font-black text-black">Typography</h2>
+              <p className="text-xs font-semibold text-black/65 mt-1">
+                Control typography for each content level.
+              </p>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-8">
+              {[
+                ["badge", "Badge"],
+                ["heading", "Main Heading"],
+                ["statValue", "Stat Value"],
+                ["statLabel", "Stat Label"],
+                ["review", "Review Text"],
+                ["reviewerName", "Reviewer Name"],
+                ["reviewerRole", "Reviewer Role"],
+                ["teamsLabel", "Teams Label"],
+                ["teamLogo", "Team Badge"],
+              ].map(([key, label], index) => (
+                <div
+                  key={key}
+                  className={
+                    index === 0 ? "" : "border-t-2 border-black/10 pt-7"
+                  }
+                >
+                  <h3 className="text-sm font-black text-black mb-4">
+                    {label}
                   </h3>
 
-                  <p className="text-xs font-semibold text-black/45 mt-1">
-                    Add or remove the company names.
+                  <TypographyControls
+                    value={formData.typography[key]}
+                    onChange={(value) => updateTypography(key, value)}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* IMPACT STATISTICS */}
+
+          <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+            <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#A3E635]">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-black text-black">
+                    Impact Statistics
+                  </h2>
+                  <p className="text-xs font-semibold text-black/65 mt-1">
+                    Manage the metric cards shown on the left.
                   </p>
                 </div>
 
                 <button
                   type="button"
-                  onClick={addLogo}
-                  className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-[#A3E635] border-2 border-black rounded-xl text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                  onClick={addStat}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FFDE4D] border-2 border-black rounded-xl text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all"
                 >
                   <Plus className="w-4 h-4" />
-                  Add
+                  Add Stat
                 </button>
               </div>
+            </div>
 
-              <div className="space-y-3">
-                {formData.logos.map((logo, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <TextInput
-                        value={logo}
-                        onChange={(value) => updateLogo(index, value)}
-                        placeholder="Company name"
-                      />
-                    </div>
+            <div className="p-4 sm:p-6 space-y-3">
+              {formData.stats.map((stat, index) => {
+                const isOpen = openStat === index;
 
+                return (
+                  <div
+                    key={index}
+                    className="border-2 border-black rounded-2xl overflow-hidden bg-[#FFFDF9]"
+                  >
                     <button
                       type="button"
-                      onClick={() => deleteLogo(index)}
-                      className="shrink-0 w-11 h-11 flex items-center justify-center bg-white border-2 border-black rounded-xl hover:bg-[#F472B6] transition-all"
-                      aria-label="Delete company badge"
+                      onClick={() => setOpenStat(isOpen ? null : index)}
+                      className="w-full flex items-center gap-3 p-4 text-left hover:bg-white transition-colors"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <div
+                        className="w-10 h-10 rounded-lg border-2 border-black flex items-center justify-center shrink-0 shadow-[1.5px_1.5px_0px_0px_rgba(0,0,0,1)]"
+                        style={{
+                          backgroundColor: stat.backgroundColor || "#FFDE4D",
+                        }}
+                      >
+                        <span className="text-xs font-black">{index + 1}</span>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black truncate">
+                          {stat.value || "0"}
+                        </p>
+                        <p className="text-[11px] font-semibold text-black/45 truncate mt-0.5">
+                          {stat.label || "Untitled Metric"}
+                        </p>
+                      </div>
+
+                      {isOpen ? (
+                        <ChevronUp className="w-5 h-5 shrink-0" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 shrink-0" />
+                      )}
                     </button>
+
+                    {isOpen && (
+                      <div className="border-t-2 border-black p-5 sm:p-6 bg-white space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <Field label="Value">
+                            <TextInput
+                              value={stat.value}
+                              onChange={(value) =>
+                                updateStat(index, "value", value)
+                              }
+                            />
+                          </Field>
+
+                          <Field label="Label">
+                            <TextInput
+                              value={stat.label}
+                              onChange={(value) =>
+                                updateStat(index, "label", value)
+                              }
+                            />
+                          </Field>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <ColorControl
+                            label="Card Background"
+                            value={stat.backgroundColor}
+                            onChange={(value) =>
+                              updateStat(index, "backgroundColor", value)
+                            }
+                          />
+
+                          <ColorControl
+                            label="Value Color"
+                            value={stat.color}
+                            onChange={(value) =>
+                              updateStat(index, "color", value)
+                            }
+                          />
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t-2 border-black/10">
+                          <button
+                            type="button"
+                            onClick={() => duplicateStat(index)}
+                            className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-black rounded-xl text-xs font-black hover:bg-[#A3E635] transition-all"
+                          >
+                            <Copy className="w-4 h-4" />
+                            Duplicate
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => deleteStat(index)}
+                            className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-black rounded-xl text-xs font-black hover:bg-[#F472B6] transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
+                );
+              })}
+            </div>
+          </section>
+
+          {/* CUSTOMER REVIEWS */}
+
+          <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+            <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#F472B6]">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-black text-black">
+                    Customer Reviews
+                  </h2>
+                  <p className="text-xs font-semibold text-black/65 mt-1">
+                    Manage the testimonials used by the review carousel.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addReview}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#A3E635] border-2 border-black rounded-xl text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Review
+                </button>
               </div>
             </div>
+
+            <div className="p-4 sm:p-6 space-y-3">
+              {formData.reviews.map((review, index) => {
+                const isOpen = openReview === index;
+
+                return (
+                  <div
+                    key={index}
+                    className="border-2 border-black rounded-2xl overflow-hidden bg-[#FFFDF9]"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenReview(isOpen ? null : index)}
+                      className="w-full flex items-center gap-3 p-4 text-left hover:bg-white transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-lg border-2 border-black bg-[#FFDE4D] flex items-center justify-center shrink-0 shadow-[1.5px_1.5px_0px_0px_rgba(0,0,0,1)]">
+                        <span className="text-xs font-black">{index + 1}</span>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black truncate">
+                          {review.name || "Unnamed Reviewer"}
+                        </p>
+                        <p className="text-[11px] font-semibold text-black/45 truncate mt-0.5">
+                          {review.role || "No role specified"}
+                        </p>
+                      </div>
+
+                      {isOpen ? (
+                        <ChevronUp className="w-5 h-5 shrink-0" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 shrink-0" />
+                      )}
+                    </button>
+
+                    {isOpen && (
+                      <div className="border-t-2 border-black p-5 sm:p-6 bg-white space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <Field label="Reviewer Name">
+                            <TextInput
+                              value={review.name}
+                              onChange={(value) =>
+                                updateReview(index, "name", value)
+                              }
+                            />
+                          </Field>
+
+                          <Field label="Role">
+                            <TextInput
+                              value={review.role}
+                              onChange={(value) =>
+                                updateReview(index, "role", value)
+                              }
+                            />
+                          </Field>
+                        </div>
+
+                        <Field label="Review Text">
+                          <textarea
+                            value={review.text}
+                            onChange={(e) =>
+                              updateReview(index, "text", e.target.value)
+                            }
+                            rows={6}
+                            className="w-full px-3.5 py-3 bg-white border-2 border-black rounded-xl text-sm font-semibold text-black outline-none resize-y placeholder:text-black/30 focus:bg-[#FFFDF9] focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all"
+                          />
+                        </Field>
+
+                        <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t-2 border-black/10">
+                          <button
+                            type="button"
+                            onClick={() => duplicateReview(index)}
+                            className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-black rounded-xl text-xs font-black hover:bg-[#A3E635] transition-all"
+                          >
+                            <Copy className="w-4 h-4" />
+                            Duplicate
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => deleteReview(index)}
+                            className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 bg-white border-2 border-black rounded-xl text-xs font-black hover:bg-[#F472B6] transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* PROFESSIONAL TEAMS */}
+
+          <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+            <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#FFDE4D]">
+              <h2 className="text-lg font-black text-black">
+                Professional Teams
+              </h2>
+              <p className="text-xs font-semibold text-black/65 mt-1">
+                Manage the label and company badges displayed below the reviews.
+              </p>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-6">
+              <Field label="Section Label">
+                <TextInput
+                  value={formData.teamsLabel}
+                  onChange={(value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      teamsLabel: value,
+                    }))
+                  }
+                />
+              </Field>
+
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-black text-black">
+                      Company Badges
+                    </h3>
+                    <p className="text-xs font-semibold text-black/45 mt-1">
+                      Add or remove the company names.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={addLogo}
+                    className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-[#A3E635] border-2 border-black rounded-xl text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {formData.logos.map((logo, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <TextInput
+                          value={logo}
+                          onChange={(value) => updateLogo(index, value)}
+                          placeholder="Company name"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => deleteLogo(index)}
+                        className="shrink-0 w-11 h-11 flex items-center justify-center bg-white border-2 border-black rounded-xl hover:bg-[#F472B6] transition-all"
+                        aria-label="Delete company badge"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* REVIEW AND TEAM COLORS */}
+
+          <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+            <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#C084FC]">
+              <h2 className="text-lg font-black text-black">
+                Review & Team Colors
+              </h2>
+            </div>
+
+            <div className="p-5 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ColorControl
+                label="Review Card Background"
+                value={formData.colors.reviewCardBackground}
+                onChange={(value) =>
+                  updateColors("reviewCardBackground", value)
+                }
+              />
+
+              <ColorControl
+                label="Rating Badge Background"
+                value={formData.colors.reviewBadgeBackground}
+                onChange={(value) =>
+                  updateColors("reviewBadgeBackground", value)
+                }
+              />
+
+              <ColorControl
+                label="Rating Badge Text"
+                value={formData.colors.reviewBadgeText}
+                onChange={(value) => updateColors("reviewBadgeText", value)}
+              />
+
+              <ColorControl
+                label="Navigation Background"
+                value={formData.colors.navigationBackground}
+                onChange={(value) =>
+                  updateColors("navigationBackground", value)
+                }
+              />
+
+              <ColorControl
+                label="Navigation Hover Background"
+                value={formData.colors.navigationHoverBackground}
+                onChange={(value) =>
+                  updateColors("navigationHoverBackground", value)
+                }
+              />
+
+              <ColorControl
+                label="Review Text"
+                value={formData.colors.reviewText}
+                onChange={(value) => updateColors("reviewText", value)}
+              />
+
+              <ColorControl
+                label="Reviewer Name"
+                value={formData.colors.reviewerText}
+                onChange={(value) => updateColors("reviewerText", value)}
+              />
+
+              <ColorControl
+                label="Reviewer Role"
+                value={formData.colors.reviewerRoleText}
+                onChange={(value) => updateColors("reviewerRoleText", value)}
+              />
+
+              <ColorControl
+                label="Teams Label"
+                value={formData.colors.teamsLabelText}
+                onChange={(value) => updateColors("teamsLabelText", value)}
+              />
+
+              <ColorControl
+                label="Team Badge Background"
+                value={formData.colors.teamLogoBackground}
+                onChange={(value) => updateColors("teamLogoBackground", value)}
+              />
+
+              <ColorControl
+                label="Team Badge Text"
+                value={formData.colors.teamLogoText}
+                onChange={(value) => updateColors("teamLogoText", value)}
+              />
+            </div>
+          </section>
+
+          {/* SAVE AND RESET */}
+
+          <EditorActions
+            onSave={handleSave}
+            onReset={handleReset}
+            savedMessage={savedMessage}
+          />
+        </div>
+
+        {/* RIGHT: LIVE PREVIEW */}
+
+        <aside className="min-w-0 lg:sticky lg:top-4">
+          <div className="bg-white border-2 border-black rounded-2xl overflow-hidden shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] my-30">
+            <div className="bg-[#F472B6] border-b-2 border-black px-5 py-4">
+              <div className="flex items-center gap-2">
+                <Eye className="w-5 h-5 shrink-0" />
+
+                <h2 className="text-lg font-black text-black">Live Preview</h2>
+              </div>
+              <p className="text-xs font-semibold text-black/65 mt-1">
+                Your changes appear here instantly, without saving.
+              </p>
+            </div>
+
+            <div className="p-3 sm:p-4">
+              <ScaledTrustResultsPreview data={formData} />
+            </div>
           </div>
-        </section>
-
-        {/* Review / Team Colors */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#C084FC]">
-            <h2 className="text-lg font-black text-black">
-              Review & Team Colors
-            </h2>
-          </div>
-
-          <div className="p-5 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ColorControl
-              label="Review Card Background"
-              value={formData.colors.reviewCardBackground}
-              onChange={(value) => updateColors("reviewCardBackground", value)}
-            />
-
-            <ColorControl
-              label="Rating Badge Background"
-              value={formData.colors.reviewBadgeBackground}
-              onChange={(value) => updateColors("reviewBadgeBackground", value)}
-            />
-
-            <ColorControl
-              label="Review Text"
-              value={formData.colors.reviewText}
-              onChange={(value) => updateColors("reviewText", value)}
-            />
-
-            <ColorControl
-              label="Reviewer Name"
-              value={formData.colors.reviewerText}
-              onChange={(value) => updateColors("reviewerText", value)}
-            />
-
-            <ColorControl
-              label="Reviewer Role"
-              value={formData.colors.reviewerRoleText}
-              onChange={(value) => updateColors("reviewerRoleText", value)}
-            />
-
-            <ColorControl
-              label="Teams Label"
-              value={formData.colors.teamsLabelText}
-              onChange={(value) => updateColors("teamsLabelText", value)}
-            />
-
-            <ColorControl
-              label="Team Badge Background"
-              value={formData.colors.teamLogoBackground}
-              onChange={(value) => updateColors("teamLogoBackground", value)}
-            />
-
-            <ColorControl
-              label="Team Badge Text"
-              value={formData.colors.teamLogoText}
-              onChange={(value) => updateColors("teamLogoText", value)}
-            />
-          </div>
-        </section>
-
-        {/* Actions */}
-        <EditorActions
-          onSave={handleSave}
-          onReset={handleReset}
-          savedMessage={savedMessage}
-        />
+        </aside>
       </div>
     </div>
   );

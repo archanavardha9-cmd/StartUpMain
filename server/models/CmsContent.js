@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const cmsContentSchema = new mongoose.Schema(
   {
@@ -18,4 +18,7 @@ const cmsContentSchema = new mongoose.Schema(
   }
 );
 
-export default mongoose.model("CmsContent", cmsContentSchema);
+module.exports = mongoose.model(
+  "CmsContent",
+  cmsContentSchema
+);
