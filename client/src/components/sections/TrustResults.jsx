@@ -298,10 +298,14 @@ const TrustResults = ({ previewData, isPreview = false }) => {
 
   return (
     <section
-      className="py-12 sm:py-16 border-b-4 border-black"
+      className={`${isPreview ? "py-16" : "py-12 sm:py-16"} border-b-4 border-black`}
       style={{ backgroundColor: data.section.backgroundColor || "#FFFDF9" }}
     >
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
+      <div
+        className={`max-w-[1200px] mx-auto ${
+          isPreview ? "px-6" : "px-4 sm:px-6"
+        }`}
+      >
         <div className="max-w-2xl mx-auto mb-8 sm:mb-12 text-center">
           <span
             className="inline-block uppercase tracking-wider border-2 border-black px-3.5 py-1.5 rounded-md shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
@@ -319,11 +323,15 @@ const TrustResults = ({ previewData, isPreview = false }) => {
           </span>
 
           <h2
-            className="text-2xl sm:text-3xl tracking-tight mt-5"
+            className={`${
+              isPreview ? "text-3xl" : "text-2xl sm:text-3xl"
+            } tracking-tight mt-5`}
             style={{
               color: data.section.headingColor || "#000000",
               fontFamily: typography.heading.fontFamily,
-              fontSize: `clamp(24px, 2.5vw, ${typography.heading.fontSize}px)`,
+              fontSize: isPreview
+                ? `${typography.heading.fontSize}px`
+                : `clamp(24px, 2.5vw, ${typography.heading.fontSize}px)`,
               fontWeight: typography.heading.fontWeight,
               lineHeight: typography.heading.lineHeight,
               letterSpacing: `${typography.heading.letterSpacing}px`,
@@ -336,8 +344,16 @@ const TrustResults = ({ previewData, isPreview = false }) => {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-6 grid grid-cols-2 gap-4">
+        <div
+          className={`grid ${
+            isPreview ? "grid-cols-12" : "grid-cols-1 lg:grid-cols-12"
+          } gap-8 items-center`}
+        >
+          <div
+            className={`${
+              isPreview ? "col-span-6" : "lg:col-span-6"
+            } grid grid-cols-2 gap-4`}
+          >
             {data.stats.map((stat, index) => (
               <div
                 key={index}
@@ -376,7 +392,9 @@ const TrustResults = ({ previewData, isPreview = false }) => {
           </div>
 
           <div
-            className="lg:col-span-6 p-6 sm:p-8 rounded-2xl border-2 border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between min-h-[220px]"
+            className={`${
+              isPreview ? "col-span-6 p-8" : "lg:col-span-6 p-6 sm:p-8"
+            } rounded-2xl border-2 border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between min-h-[220px]`}
             style={{
               backgroundColor: colors.reviewCardBackground || "#FFFFFF",
             }}
@@ -448,7 +466,9 @@ const TrustResults = ({ previewData, isPreview = false }) => {
                   style={{
                     color: colors.reviewText || "#000000",
                     fontFamily: typography.review.fontFamily,
-                    fontSize: `clamp(12px, 1.2vw, ${typography.review.fontSize}px)`,
+                    fontSize: isPreview
+                      ? `${typography.review.fontSize}px`
+                      : `clamp(12px, 1.2vw, ${typography.review.fontSize}px)`,
                     fontWeight: typography.review.fontWeight,
                     lineHeight: typography.review.lineHeight,
                     letterSpacing: `${typography.review.letterSpacing}px`,

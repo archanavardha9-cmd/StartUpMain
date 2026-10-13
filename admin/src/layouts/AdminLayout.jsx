@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -10,6 +10,9 @@ import {
   ExternalLink,
   Menu,
   X,
+  PanelLeftClose,
+  PanelLeftOpen,
+  LocationEditIcon,
 } from "lucide-react";
 
 const navigation = [
@@ -29,27 +32,33 @@ const homeNavigation = [
   {
     label: "Hero",
     path: "/home/hero",
+    icon: Image,
   },
   {
     label: "Space & Audience",
     path: "/home/space-audience",
+    icon: Users,
   },
   {
     label: "Our Impact",
     path: "/home/trust-results",
+    icon: Palette,
   },
   {
     label: "Spaces & Rates",
     path: "/home/spaces-pricing",
+    icon: Home,
   },
   {
     label: "Location & CTA",
     path: "/home/location-cta",
+    icon: LocationEditIcon,
   },
 ];
 
 const AdminLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#F5F5F0] text-black flex">
@@ -66,22 +75,22 @@ const AdminLayout = () => {
       {/* Sidebar */}
       <aside
         className={`
-          fixed lg:sticky top-0 left-0 z-50
-          h-screen w-[270px]
+          fixed lg:sticky top-0 left-0 z-50 shrink-0
+          h-screen w-[270px] ${sidebarCollapsed ? "lg:w-[84px]" : "lg:w-[270px]"}
           bg-white border-r-4 border-black
           flex flex-col
-          transition-transform duration-200
+          transition-[width,transform] duration-200
           ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
         {/* Brand */}
-        <div className="h-20 px-5 border-b-4 border-black flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className={`h-20 border-b-4 border-black flex items-center px-5 justify-between ${sidebarCollapsed ? "lg:px-4 lg:justify-center" : ""}`}>
+          <div className={`flex items-center gap-3 ${sidebarCollapsed ? "lg:justify-center" : ""}`}>
             <div className="w-11 h-11 bg-[#FFDE4D] border-2 border-black rounded-xl flex items-center justify-center font-black text-lg shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
               SC
             </div>
 
-            <div>
+            <div className="lg:hidden">
               <h1 className="font-black text-base leading-none">
                 Startup Cafe
               </h1>
@@ -102,8 +111,8 @@ const AdminLayout = () => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 overflow-y-auto">
-          <p className="px-2 mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-black/50">
+        <nav className={`flex-1 overflow-y-auto ${sidebarCollapsed ? "p-3" : "p-4"}`}>
+          <p className={`px-2 mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-black/50 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
             Management
           </p>
 
@@ -118,9 +127,11 @@ const AdminLayout = () => {
                   to={item.path}
                   end={item.path === "/"}
                   onClick={() => setMobileOpen(false)}
+                  title={sidebarCollapsed ? item.label : undefined}
+                  aria-label={sidebarCollapsed ? item.label : undefined}
                   className={({ isActive }) =>
                     `
-          flex items-center gap-3
+          flex items-center ${sidebarCollapsed ? "lg:justify-center" : "gap-3"}
           px-3.5 py-3
           rounded-xl
           border-2 border-black
@@ -135,27 +146,32 @@ const AdminLayout = () => {
                   }
                 >
                   <Icon className="w-4 h-4 shrink-0" />
-                  <span>{item.label}</span>
+                  <span className={sidebarCollapsed ? "lg:hidden" : ""}>{item.label}</span>
                 </NavLink>
               );
             })}
 
             {/* HOME */}
             <div className="pt-2">
-              <div className="px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.15em] text-black/40">
+              <div className={`px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.15em] text-black/40 ${sidebarCollapsed ? "lg:hidden" : ""}`}>
                 Homepage
               </div>
 
               <div className="space-y-1.5">
-                {homeNavigation.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setMobileOpen(false)}
-                    className={({ isActive }) =>
-                      `
-            flex items-center gap-3
-            ml-2
+                {homeNavigation.map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setMobileOpen(false)}
+                      title={sidebarCollapsed ? item.label : undefined}
+                      aria-label={sidebarCollapsed ? item.label : undefined}
+                      className={({ isActive }) =>
+                        `
+            flex items-center ${sidebarCollapsed ? "lg:justify-center" : "gap-3"}
+            ${sidebarCollapsed ? "lg:ml-0" : "ml-2"}
             px-3 py-2.5
             rounded-lg
             border-2 border-black
@@ -167,26 +183,29 @@ const AdminLayout = () => {
                 : "bg-white hover:bg-[#F5F5F0]"
             }
             `
-                    }
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-black shrink-0" />
-                    <span>{item.label}</span>
-                  </NavLink>
-                ))}
+                      }
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className={sidebarCollapsed ? "lg:hidden" : ""}>{item.label}</span>
+                    </NavLink>
+                  );
+                })}
               </div>
             </div>
           </div>
         </nav>
 
         {/* View Website */}
-        <div className="p-4 border-t-2 border-black/10">
+        <div className={`border-t-2 border-black/10 ${sidebarCollapsed ? "p-3" : "p-4"}`}>
           <a
             href="/"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-between gap-3 px-3.5 py-3 rounded-xl border-2 border-black bg-[#A3E635] font-black text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all"
+            title={sidebarCollapsed ? "View Website" : undefined}
+            aria-label={sidebarCollapsed ? "View Website" : undefined}
+            className={`flex items-center justify-between gap-3 px-3.5 py-3 rounded-xl border-2 border-black bg-[#A3E635] font-black text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all ${sidebarCollapsed ? "lg:justify-center" : ""}`}
           >
-            <span>View Website</span>
+            <span className={sidebarCollapsed ? "lg:hidden" : ""}>View Website</span>
             <ExternalLink className="w-4 h-4" />
           </a>
         </div>
@@ -204,10 +223,25 @@ const AdminLayout = () => {
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="hidden lg:block">
-            <p className="text-xs font-bold text-black/50">Startup Cafe CMS</p>
-
-            <h2 className="text-lg font-black">Website Management</h2>
+          <div className="hidden lg:flex lg:items-center lg:gap-4">
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!sidebarCollapsed}
+              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className="p-2.5 border-2 border-black rounded-xl bg-[#FFDE4D] hover:-translate-y-0.5 transition-all"
+            >
+              {sidebarCollapsed ? (
+                <PanelLeftOpen className="w-5 h-5" />
+              ) : (
+                <PanelLeftClose className="w-5 h-5" />
+              )}
+            </button>
+            <div>
+              <p className="text-xs font-bold text-black/50">Startup Cafe CMS</p>
+              <h2 className="text-lg font-black">Website Management</h2>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 ml-auto">

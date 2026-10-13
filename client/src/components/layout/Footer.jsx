@@ -139,10 +139,19 @@ const getFooterSettings = () => {
   }
 };
 
-const Footer = () => {
-  const [footer, setFooter] = useState(getFooterSettings);
+const Footer = ({ previewSettings, isPreview = false }) => {
+  const [footer, setFooter] = useState(() =>
+    isPreview
+      ? normalizeFooter(previewSettings?.footer || {})
+      : getFooterSettings()
+  );
 
   useEffect(() => {
+    if (isPreview) {
+      setFooter(normalizeFooter(previewSettings?.footer || {}));
+      return undefined;
+    }
+
     let active = true;
 
     const updateFromStorage = () => {
@@ -234,7 +243,7 @@ const Footer = () => {
       window.removeEventListener('siteSettingsUpdated', updateFooter);
       window.removeEventListener('storage', handleStorage);
     };
-  }, []);
+  }, [isPreview, previewSettings]);
 
   const brandTypography = footer.brandTypography;
   const descriptionTypography = footer.descriptionTypography;

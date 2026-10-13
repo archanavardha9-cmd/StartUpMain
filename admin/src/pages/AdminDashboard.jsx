@@ -1,8 +1,6 @@
 import React from 'react';
 import {
   Home,
-  Image,
-  Users,
   FileText,
   ArrowRight,
   ExternalLink,
@@ -30,27 +28,27 @@ const AdminDashboard = () => {
     {
       title: 'Hero',
       description: 'Edit headline, description, CTA buttons, image and partner logos.',
-      path: '/admin/home/hero',
+      path: '/home/hero',
     },
     {
       title: 'Space & Audience',
       description: 'Manage audience cards, icons, descriptions and styling.',
-      path: '/admin/home/space-audience',
+      path: '/home/space-audience',
     },
     {
       title: 'Our Impact',
       description: 'Manage statistics, reviews and professional teams.',
-      path: '/admin/home/trust-results',
+      path: '/home/trust-results',
     },
     {
       title: 'Spaces & Rates',
       description: 'Manage workspace plans, prices, features and gallery.',
-      path: '/admin/home/spaces-pricing',
+      path: '/home/spaces-pricing',
     },
     {
       title: 'Location & CTA',
       description: 'Manage booking form, location, contact details and map.',
-      path: '/admin/home/location-cta',
+      path: '/home/location-cta',
     },
   ];
 

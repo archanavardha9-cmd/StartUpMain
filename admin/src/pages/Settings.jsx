@@ -9,6 +9,8 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import Navbar from "../../../client/src/components/layout/Navbar";
+import Footer from "../../../client/src/components/layout/Footer";
 
 import Field from "../components/Field";
 import TextInput from "../components/TextInput";
@@ -315,6 +317,71 @@ const loadSettings = () => {
   }
 };
 
+const SETTINGS_PREVIEW_WIDTH = 1200;
+
+const ScaledSettingsPreview = ({ children }) => {
+  const containerRef = React.useRef(null);
+  const contentRef = React.useRef(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+
+    if (!container || !content) return undefined;
+
+    let animationFrame;
+    const updateDimensions = () => {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = requestAnimationFrame(() => {
+        setContainerWidth(container.clientWidth);
+        setContentHeight(content.offsetHeight);
+      });
+    };
+
+    const observer = new ResizeObserver(updateDimensions);
+    observer.observe(container);
+    observer.observe(content);
+    updateDimensions();
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      observer.disconnect();
+    };
+  }, []);
+
+  const scale =
+    containerWidth > 0
+      ? Math.min(1, containerWidth / SETTINGS_PREVIEW_WIDTH)
+      : 0;
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full min-w-0 overflow-hidden"
+      style={{
+        height:
+          scale > 0 && contentHeight > 0
+            ? `${contentHeight * scale}px`
+            : "auto",
+      }}
+    >
+      <div
+        ref={contentRef}
+        className="pointer-events-none"
+        style={{
+          width: `${SETTINGS_PREVIEW_WIDTH}px`,
+          transform: `scale(${scale || 0.01})`,
+          transformOrigin: "top left",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+};
+
 // ============================================================
 // MAIN COMPONENT
 // ============================================================
@@ -322,6 +389,7 @@ const loadSettings = () => {
 const SettingsEditor = () => {
   const [settings, setSettings] = useState(loadSettings);
   const [openSection, setOpenSection] = useState("header");
+  const [previewOpen, setPreviewOpen] = useState(true);
   const [savedMessage, setSavedMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -623,7 +691,7 @@ const SettingsEditor = () => {
 
   return (
     <div className="min-h-screen bg-[#F5F5F0] p-3 sm:p-5 lg:p-7">
-      <div className="max-w-[1100px] mx-auto pb-28 space-y-6">
+      <div className="max-w-[1600px] mx-auto pb-28 space-y-6">
         {/* PAGE HEADER */}
         <div className="bg-white border-2 border-black rounded-2xl p-5 sm:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
           <div className="flex items-start gap-4">
@@ -644,6 +712,8 @@ const SettingsEditor = () => {
           </div>
         </div>
 
+        <div className="grid grid-cols-1 items-start gap-7 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="min-w-0 space-y-6">
         {/* HEADER ACCORDION */}
         <div className="bg-white border-2 border-black rounded-2xl overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
           <button
@@ -1218,6 +1288,58 @@ const SettingsEditor = () => {
             onReset={resetAll}
             savedMessage={isSaving ? "Saving settings..." : savedMessage}
           />
+        </div>
+          </div>
+
+          <aside className="min-w-0 xl:sticky xl:top-5">
+            <div className="rounded-2xl border-2 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:p-6">
+              <button
+                type="button"
+                aria-expanded={previewOpen}
+                aria-controls="site-settings-live-preview"
+                onClick={() => setPreviewOpen((open) => !open)}
+                className="flex w-full items-start justify-between gap-4 text-left"
+              >
+                <span>
+                  <span className="block text-lg font-black text-black">
+                    Live Website Preview
+                  </span>
+                  <span className="mt-1 block text-xs font-semibold text-black/50">
+                    The original Navbar and Footer, updated as you edit.
+                  </span>
+                </span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`mt-1 h-5 w-5 shrink-0 transition-transform ${
+                    previewOpen ? "" : "-rotate-90"
+                  }`}
+                />
+              </button>
+              {previewOpen && (
+                <div id="site-settings-live-preview">
+                  <div className="my-5 border-t-2 border-black" />
+                  <div className="space-y-5">
+                    <section>
+                      <h2 className="mb-2 text-sm font-black text-black">
+                        Navbar
+                      </h2>
+                      <ScaledSettingsPreview>
+                        <Navbar previewSettings={settings} isPreview />
+                      </ScaledSettingsPreview>
+                    </section>
+                    <section>
+                      <h2 className="mb-2 text-sm font-black text-black">
+                        Footer
+                      </h2>
+                      <ScaledSettingsPreview>
+                        <Footer previewSettings={settings} isPreview />
+                      </ScaledSettingsPreview>
+                    </section>
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
         </div>
       </div>
     </div>

@@ -1,4 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
+@source "../../client/src/components/sections/Hero.jsx";
+@source "../../client/src/components/sections/SpaceAudience.jsx";
+@source "../../client/src/components/sections/TrustResults.jsx";
+@source "../../client/src/components/sections/SpacesPricing.jsx";
+@source "../../client/src/components/sections/LocationCTA.jsx";
+@source "../../client/src/components/layout/Navbar.jsx";
+@source "../../client/src/components/layout/Footer.jsx";
 
 @layer base {
   body {
@@ -131,4 +139,23 @@
 .admin-rich-editor .ql-picker-label:hover,
 .admin-rich-editor .ql-picker-item:hover {
   color: #000;
+}
+
+.space-audience-admin-preview .line-clamp-2 {
+  display: block;
+  overflow: visible;
+  -webkit-box-orient: initial;
+  -webkit-line-clamp: unset;
+}
+
+.space-audience-admin-preview .grid > div {
+  padding: 1rem;
+}
+
+.space-audience-admin-preview .grid > div > div:first-child {
+  margin-bottom: 0.5rem;
+}
+
+.space-audience-admin-preview .grid > div > h3 {
+  margin-bottom: 0.25rem;
 }

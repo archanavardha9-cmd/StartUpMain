@@ -1,6 +1,6 @@
 
-import React, { useEffect, useState } from 'react';
-import { ImagePlus, Trash2, Plus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ImagePlus, Trash2, Plus, ChevronDown } from 'lucide-react';
 
 import Field from '../../components/Field';
 import TextInput from '../../components/TextInput';
@@ -8,6 +8,7 @@ import ColorControl from '../../components/ColorControl';
 import TypographyControls from '../../components/TypographyControls';
 import ImageUploader from '../../components/ImageUploader';
 import EditorActions from '../../components/EditorActions';
+import Hero from '../../../../client/src/components/sections/Hero';
 
 const STORAGE_KEY = 'startupCafeHero';
 
@@ -152,11 +153,74 @@ const Panel = ({ children }) => (
   </div>
 );
 
+const HERO_PREVIEW_WIDTH = 1200;
+
+const ScaledHeroPreview = ({ data }) => {
+  const containerRef = useRef(null);
+  const contentRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+
+    if (!container || !content) return undefined;
+
+    let animationFrame;
+    const updateDimensions = () => {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = requestAnimationFrame(() => {
+        setContainerWidth(container.clientWidth);
+        setContentHeight(content.offsetHeight);
+      });
+    };
+
+    const observer = new ResizeObserver(updateDimensions);
+    observer.observe(container);
+    observer.observe(content);
+    updateDimensions();
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      observer.disconnect();
+    };
+  }, []);
+
+  const scale =
+    containerWidth > 0 ? Math.min(1, containerWidth / HERO_PREVIEW_WIDTH) : 0;
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full min-w-0 overflow-hidden"
+      style={{
+        height:
+          scale > 0 && contentHeight > 0
+            ? `${contentHeight * scale}px`
+            : 'auto',
+      }}
+    >
+      <div
+        ref={contentRef}
+        style={{
+          width: `${HERO_PREVIEW_WIDTH}px`,
+          transform: `scale(${scale || 0.01})`,
+          transformOrigin: 'top left',
+        }}
+      >
+        <Hero previewData={data} isPreview />
+      </div>
+    </div>
+  );
+};
+
 const HeroEditor = () => {
   const [formData, setFormData] = useState(getSavedData);
   const [savedMessage, setSavedMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(true);
 
   // Load the saved Hero content from MongoDB.
   useEffect(() => {
@@ -320,7 +384,7 @@ const HeroEditor = () => {
 
   return (
     <div className="min-h-screen bg-[#F5F5F0] p-3 sm:p-5 lg:p-7">
-      <div className="max-w-[1100px] mx-auto pb-28 space-y-6">
+      <div className="max-w-[1800px] mx-auto pb-28 space-y-6">
 
         {/* PAGE HEADER */}
         <div className="mb-7">
@@ -344,7 +408,8 @@ const HeroEditor = () => {
           </p>
         )}
 
-        <div className="space-y-7">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-7 items-start">
+          <div className="min-w-0 space-y-7">
 
           {/* 01 — MAIN CONTENT */}
           <Panel>
@@ -505,42 +570,26 @@ const HeroEditor = () => {
               description="Change the main workspace image shown on the right side."
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
-              <div className="space-y-5">
-                <Field
-                  label="Image"
-                  description="Use the existing image uploader component. Uploaded images must have a persistent URL to survive refreshes."
-                >
-                  <ImageUploader
-                    value={formData.heroImage}
-                    onChange={(value) => update('heroImage', value)}
-                  />
-                </Field>
+            <div className="space-y-5">
+              <Field
+                label="Image"
+                description="Use the existing image uploader component. Uploaded images must have a persistent URL to survive refreshes."
+              >
+                <ImageUploader
+                  value={formData.heroImage}
+                  onChange={(value) => update('heroImage', value)}
+                />
+              </Field>
 
-                <Field
-                  label="Image URL"
-                  description="You can also directly use a public image URL."
-                >
-                  <TextInput
-                    value={formData.heroImage}
-                    onChange={(value) => update('heroImage', value)}
-                  />
-                </Field>
-              </div>
-
-              <div className="border-2 border-black rounded-2xl overflow-hidden bg-[#F5F5F0]">
-                <div className="px-3 py-2 border-b-2 border-black bg-white text-xs font-black">
-                  Current Image
-                </div>
-
-                <div className="aspect-[4/3]">
-                  <img
-                    src={formData.heroImage}
-                    alt="Hero preview"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
+              <Field
+                label="Image URL"
+                description="You can also directly use a public image URL."
+              >
+                <TextInput
+                  value={formData.heroImage}
+                  onChange={(value) => update('heroImage', value)}
+                />
+              </Field>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
@@ -796,6 +845,40 @@ const HeroEditor = () => {
               isSaving ? 'Saving Hero content...' : savedMessage
             }
           />
+          </div>
+
+          <aside className="min-w-0 xl:sticky xl:top-5">
+            <Panel>
+              <button
+                type="button"
+                aria-expanded={previewOpen}
+                aria-controls="hero-live-preview"
+                onClick={() => setPreviewOpen((open) => !open)}
+                className="flex w-full items-start justify-between gap-4 text-left"
+              >
+                <span>
+                  <span className="block text-lg font-black text-black">
+                    Live Website Preview
+                  </span>
+                  <span className="mt-1 block text-xs font-semibold text-black/50">
+                    This is the original homepage Hero, updated as you edit.
+                  </span>
+                </span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`mt-1 h-5 w-5 shrink-0 transition-transform ${
+                    previewOpen ? '' : '-rotate-90'
+                  }`}
+                />
+              </button>
+              {previewOpen && (
+                <div id="hero-live-preview">
+                  <div className="my-5 border-t-2 border-black" />
+                  <ScaledHeroPreview data={formData} />
+                </div>
+              )}
+            </Panel>
+          </aside>
         </div>
       </div>
     </div>

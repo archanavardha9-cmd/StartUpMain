@@ -1,5 +1,8 @@
 
 import React, { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import LocationCTA from "../../../../client/src/components/sections/LocationCTA";
+import { ToastProvider } from "../../../../client/src/components/common/Toast";
 import EditorActions from "../../components/EditorActions";
 
 const STORAGE_KEY = "startupCafeLocationCTA";
@@ -211,24 +214,115 @@ const ColorField = ({ label, value, onChange }) => (
   </div>
 );
 
-const EditorSection = ({ number, title, description, children }) => (
-  <section className="bg-white border-2 border-black rounded-2xl p-5 sm:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-    <div className="flex items-start gap-3 mb-6">
-      <div className="w-9 h-9 shrink-0 bg-[#FFDE4D] border-2 border-black rounded-lg flex items-center justify-center font-black text-black">
-        {number}
-      </div>
+const LOCATION_CTA_PREVIEW_WIDTH = 1200;
 
-      <div>
-        <h2 className="text-xl font-black text-black">{title}</h2>
-        {description && (
-          <p className="text-sm text-gray-600 font-medium mt-1">
-            {description}
-          </p>
-        )}
+const ScaledLocationCTAPreview = ({ data }) => {
+  const containerRef = React.useRef(null);
+  const contentRef = React.useRef(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+
+    if (!container || !content) return undefined;
+
+    let animationFrame;
+    const updateDimensions = () => {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = requestAnimationFrame(() => {
+        setContainerWidth(container.clientWidth);
+        setContentHeight(content.offsetHeight);
+      });
+    };
+
+    const observer = new ResizeObserver(updateDimensions);
+    observer.observe(container);
+    observer.observe(content);
+    updateDimensions();
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      observer.disconnect();
+    };
+  }, []);
+
+  const scale =
+    containerWidth > 0
+      ? Math.min(1, containerWidth / LOCATION_CTA_PREVIEW_WIDTH)
+      : 0;
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full min-w-0 overflow-hidden"
+      style={{
+        height:
+          scale > 0 && contentHeight > 0
+            ? `${contentHeight * scale}px`
+            : "auto",
+      }}
+    >
+      <div
+        ref={contentRef}
+        style={{
+          width: `${LOCATION_CTA_PREVIEW_WIDTH}px`,
+          transform: `scale(${scale || 0.01})`,
+          transformOrigin: "top left",
+        }}
+      >
+        <ToastProvider>
+          <LocationCTA previewData={data} isPreview />
+        </ToastProvider>
       </div>
     </div>
+  );
+};
 
-    {children}
+const EditorSection = ({
+  number,
+  id,
+  title,
+  description,
+  open,
+  onToggle,
+  children,
+}) => (
+  <section className="overflow-hidden rounded-2xl border-2 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+    <button
+      type="button"
+      aria-expanded={open}
+      aria-controls={`${id}-content`}
+      onClick={onToggle}
+      className="flex w-full items-center gap-3 px-5 py-4 text-left hover:bg-[#FFFDF9] transition-colors sm:px-6"
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-black bg-[#FFDE4D] font-black text-black">
+        {number}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-lg font-black text-black">{title}</span>
+        {description && (
+          <span className="mt-1 block text-sm font-medium text-gray-600">
+            {description}
+          </span>
+        )}
+      </span>
+      <ChevronDown
+        aria-hidden="true"
+        className={`h-5 w-5 shrink-0 transition-transform ${
+          open ? "" : "-rotate-90"
+        }`}
+      />
+    </button>
+    {open && (
+      <div
+        id={`${id}-content`}
+        className="border-t-2 border-black p-5 sm:p-6"
+      >
+        {children}
+      </div>
+    )}
   </section>
 );
 
@@ -254,9 +348,15 @@ const FieldTypeBadge = ({ type }) => {
 
 const LocationCTAEditor = () => {
   const [data, setData] = useState(() => getStoredData());
+  const [openSection, setOpenSection] = useState("settings");
+  const [previewOpen, setPreviewOpen] = useState(true);
   const [savedMessage, setSavedMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  const toggleSection = (section) => {
+    setOpenSection((current) => (current === section ? null : section));
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -509,7 +609,7 @@ const LocationCTAEditor = () => {
 
   return (
     <div className="min-h-screen bg-[#F5F5F0] p-3 sm:p-5 lg:p-7">
-      <div className="max-w-4xl mx-auto pb-28 space-y-6">
+      <div className="max-w-[1600px] mx-auto pb-28 space-y-6">
         {/* Header */}
         <div className="mb-7">
           <h1 className="text-2xl sm:text-3xl font-black text-black">
@@ -521,11 +621,17 @@ const LocationCTAEditor = () => {
           </p>
         </div>
 
+        <div className="grid grid-cols-1 items-start gap-7 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="min-w-0 space-y-6">
         {/* Section Settings */}
+        <div className="space-y-4">
         <EditorSection
           number="01"
+          id="settings"
           title="Section Settings"
           description="Basic styling for the Location & Booking section."
+          open={openSection === "settings"}
+          onToggle={() => toggleSection("settings")}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <ColorField
@@ -539,8 +645,11 @@ const LocationCTAEditor = () => {
         {/* Booking Content */}
         <EditorSection
           number="02"
+          id="booking-content"
           title="Booking Content"
           description="Edit the heading and description of the booking form."
+          open={openSection === "booking-content"}
+          onToggle={() => toggleSection("booking-content")}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <InputField
@@ -559,8 +668,11 @@ const LocationCTAEditor = () => {
         {/* Dynamic Booking Fields */}
         <EditorSection
           number="03"
+          id="booking-fields"
           title="Booking Form Fields"
           description="Add, remove, enable, disable and customize the fields shown on the public booking form."
+          open={openSection === "booking-fields"}
+          onToggle={() => toggleSection("booking-fields")}
         >
           <div className="space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -703,8 +815,11 @@ const LocationCTAEditor = () => {
         {/* Booking Buttons */}
         <EditorSection
           number="04"
+          id="booking-actions"
           title="Booking Actions"
           description="Edit booking and WhatsApp button content."
+          open={openSection === "booking-actions"}
+          onToggle={() => toggleSection("booking-actions")}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <InputField
@@ -738,8 +853,11 @@ const LocationCTAEditor = () => {
         {/* Location Content */}
         <EditorSection
           number="05"
+          id="location-information"
           title="Location Information"
           description="Manage the address and contact information shown beside the map."
+          open={openSection === "location-information"}
+          onToggle={() => toggleSection("location-information")}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <InputField
@@ -802,8 +920,11 @@ const LocationCTAEditor = () => {
         {/* Location Actions */}
         <EditorSection
           number="06"
+          id="location-actions"
           title="Location Actions"
           description="Edit the directions and WhatsApp buttons."
+          open={openSection === "location-actions"}
+          onToggle={() => toggleSection("location-actions")}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <InputField
@@ -851,6 +972,42 @@ const LocationCTAEditor = () => {
           onReset={resetChanges}
           savedMessage={savedMessage}
         />
+        </div>
+        </div>
+
+        <aside className="min-w-0 xl:sticky xl:top-5">
+          <div className="rounded-2xl border-2 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:p-6">
+            <button
+              type="button"
+              aria-expanded={previewOpen}
+              aria-controls="location-cta-live-preview"
+              onClick={() => setPreviewOpen((open) => !open)}
+              className="flex w-full items-start justify-between gap-4 text-left"
+            >
+              <span>
+                <span className="block text-lg font-black text-black">
+                  Live Website Preview
+                </span>
+                <span className="mt-1 block text-xs font-semibold text-black/50">
+                  The original homepage section, updated as you edit.
+                </span>
+              </span>
+              <ChevronDown
+                aria-hidden="true"
+                className={`mt-1 h-5 w-5 shrink-0 transition-transform ${
+                  previewOpen ? "" : "-rotate-90"
+                }`}
+              />
+            </button>
+            {previewOpen && (
+              <div id="location-cta-live-preview">
+                <div className="my-5 border-t-2 border-black" />
+                <ScaledLocationCTAPreview data={data} />
+              </div>
+            )}
+          </div>
+        </aside>
+        </div>
       </div>
     </div>
   );

@@ -141,11 +141,17 @@ const createInitialFormData = (fields) => {
   return initialData;
 };
 
-const LocationCTA = ({ selectedPlan }) => {
+const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
   const { addToast } = useToast();
-  const [content, setContent] = useState(() => getStoredData());
+  const [content, setContent] = useState(() =>
+    isPreview ? mergeData(previewData || {}) : getStoredData()
+  );
   const [formData, setFormData] = useState(() =>
-    createInitialFormData(normalizeFields(getStoredData().booking))
+    createInitialFormData(
+      normalizeFields(
+        isPreview ? mergeData(previewData || {}).booking : getStoredData().booking
+      )
+    )
   );
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -187,6 +193,11 @@ const LocationCTA = ({ selectedPlan }) => {
   }, [applyContent]);
 
   useEffect(() => {
+    if (isPreview) {
+      applyContent(previewData || {});
+      return undefined;
+    }
+
     fetchContent();
 
     const handleStorage = (event) => {
@@ -206,7 +217,7 @@ const LocationCTA = ({ selectedPlan }) => {
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener(STORAGE_EVENT, handleCustomStorage);
     };
-  }, [fetchContent, applyContent]);
+  }, [fetchContent, applyContent, isPreview, previewData]);
 
   useEffect(() => {
     if (selectedPlan) {
@@ -285,6 +296,7 @@ const LocationCTA = ({ selectedPlan }) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (isPreview) return;
     if (!validate()) return;
 
     setIsSubmitting(true);

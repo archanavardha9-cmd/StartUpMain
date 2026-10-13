@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Plus,
   Trash2,
@@ -14,6 +14,7 @@ import TextInput from "../../components/TextInput";
 import ColorControl from "../../components/ColorControl";
 import TypographyControls from "../../components/TypographyControls";
 import EditorActions from "../../components/EditorActions";
+import SpaceAudience from "../../../../client/src/components/sections/SpaceAudience";
 
 const STORAGE_KEY = "startupCafeSpaceAudience";
 
@@ -134,6 +135,72 @@ const ICON_OPTIONS = [
   "Zap",
 ];
 
+const SPACE_AUDIENCE_PREVIEW_WIDTH = 1100;
+
+const ScaledSpaceAudiencePreview = ({ data }) => {
+  const containerRef = useRef(null);
+  const contentRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+
+    if (!container || !content) return undefined;
+
+    let animationFrame;
+    const updateDimensions = () => {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = requestAnimationFrame(() => {
+        setContainerWidth(container.clientWidth);
+        setContentHeight(content.offsetHeight);
+      });
+    };
+
+    const observer = new ResizeObserver(updateDimensions);
+    observer.observe(container);
+    observer.observe(content);
+    updateDimensions();
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      observer.disconnect();
+    };
+  }, []);
+
+  const scale =
+    containerWidth > 0
+      ? Math.min(1, containerWidth / SPACE_AUDIENCE_PREVIEW_WIDTH)
+      : 0;
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full min-w-0 overflow-hidden"
+      style={{
+        height:
+          scale > 0 && contentHeight > 0
+            ? `${contentHeight * scale}px`
+            : "auto",
+      }}
+    >
+      <div
+        ref={contentRef}
+        style={{
+          width: `${SPACE_AUDIENCE_PREVIEW_WIDTH}px`,
+          transform: `scale(${scale || 0.01})`,
+          transformOrigin: "top left",
+        }}
+      >
+        <div className="space-audience-admin-preview">
+          <SpaceAudience previewData={data} isPreview />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
 const mergeData = (parsed = {}) => ({
@@ -159,6 +226,44 @@ const mergeData = (parsed = {}) => ({
     ? parsed.cards
     : clone(DEFAULT_DATA).cards,
 });
+
+const EditorSection = ({
+  id,
+  title,
+  description,
+  headerClassName,
+  isOpen,
+  onToggle,
+  headerAction,
+  children,
+}) => (
+  <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+    <div className={`flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-b-2 border-black ${headerClassName}`}>
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        aria-controls={`${id}-content`}
+        onClick={onToggle}
+        className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
+      >
+        <span>
+          <span className="block text-lg font-black text-black">{title}</span>
+          <span className="mt-1 block text-xs font-semibold text-black/65">
+            {description}
+          </span>
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className={`h-5 w-5 shrink-0 transition-transform ${
+            isOpen ? "" : "-rotate-90"
+          }`}
+        />
+      </button>
+      {headerAction}
+    </div>
+    {isOpen && <div id={`${id}-content`}>{children}</div>}
+  </section>
+);
 
 const getFallbackData = () => {
   try {
@@ -243,6 +348,27 @@ const SpaceAudienceEditor = () => {
   const [savedMessage, setSavedMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(true);
+  const [openSections, setOpenSections] = useState({
+    content: true,
+    colors: false,
+    typography: false,
+    cards: false,
+  });
+
+  const toggleSection = (section) => {
+    setOpenSections((previous) => {
+      const shouldOpen = !previous[section];
+
+      return {
+        content: false,
+        colors: false,
+        typography: false,
+        cards: false,
+        [section]: shouldOpen,
+      };
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -440,7 +566,7 @@ const SpaceAudienceEditor = () => {
 
   return (
     <div className="min-h-screen bg-[#F5F5F0] p-3 sm:p-5 lg:p-7">
-      <div className="max-w-[1100px] mx-auto pb-28 space-y-6">
+      <div className="max-w-[1800px] mx-auto pb-28 space-y-6">
         {/* Page Header */}
         <div className="mb-7">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
@@ -469,18 +595,18 @@ const SpaceAudienceEditor = () => {
           </div>
         )}
 
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-7 items-start">
+          <div className="min-w-0">
+            <div className="space-y-6">
         {/* Section Content */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#FFDE4D]">
-            <h2 className="text-lg font-black text-black">
-              Section Content
-            </h2>
-
-            <p className="text-xs font-semibold text-black/65 mt-1">
-              Edit the content shown above the audience cards.
-            </p>
-          </div>
-
+        <EditorSection
+          id="section-content"
+          title="Section Content"
+          description="Edit the content shown above the audience cards."
+          headerClassName="bg-[#FFDE4D]"
+          isOpen={openSections.content}
+          onToggle={() => toggleSection("content")}
+        >
           <div className="p-5 sm:p-6 space-y-6">
             <Field label="Badge Text">
               <TextInput
@@ -516,20 +642,17 @@ const SpaceAudienceEditor = () => {
               />
             </Field>
           </div>
-        </section>
+        </EditorSection>
 
         {/* Section Colors */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#A3E635]">
-            <h2 className="text-lg font-black text-black">
-              Section Colors
-            </h2>
-
-            <p className="text-xs font-semibold text-black/65 mt-1">
-              Control the main colors used by this section.
-            </p>
-          </div>
-
+        <EditorSection
+          id="section-colors"
+          title="Section Colors"
+          description="Control the main colors used by this section."
+          headerClassName="bg-[#A3E635]"
+          isOpen={openSections.colors}
+          onToggle={() => toggleSection("colors")}
+        >
           <div className="p-5 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <ColorControl
               label="Section Background"
@@ -563,18 +686,17 @@ const SpaceAudienceEditor = () => {
               }
             />
           </div>
-        </section>
+        </EditorSection>
 
         {/* Typography */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#C084FC]">
-            <h2 className="text-lg font-black text-black">Typography</h2>
-
-            <p className="text-xs font-semibold text-black/65 mt-1">
-              Fine-tune typography for every content level.
-            </p>
-          </div>
-
+        <EditorSection
+          id="typography"
+          title="Typography"
+          description="Fine-tune typography for every content level."
+          headerClassName="bg-[#C084FC]"
+          isOpen={openSections.typography}
+          onToggle={() => toggleSection("typography")}
+        >
           <div className="p-5 sm:p-6 space-y-8">
             <div>
               <h3 className="text-sm font-black text-black mb-4">
@@ -632,23 +754,18 @@ const SpaceAudienceEditor = () => {
               />
             </div>
           </div>
-        </section>
+        </EditorSection>
 
         {/* Audience Cards */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#F472B6]">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-black text-black">
-                  Audience Cards
-                </h2>
-
-                <p className="text-xs font-semibold text-black/65 mt-1">
-                  Manage the cards shown in the homepage grid.
-                </p>
-              </div>
-
-              <button
+        <EditorSection
+          id="audience-cards"
+          title="Audience Cards"
+          description="Manage the cards shown in the homepage grid."
+          headerClassName="bg-[#F472B6]"
+          isOpen={openSections.cards}
+          onToggle={() => toggleSection("cards")}
+          headerAction={
+            <button
                 type="button"
                 onClick={addCard}
                 disabled={isLoading || isSaving}
@@ -665,9 +782,8 @@ const SpaceAudienceEditor = () => {
                 <Plus className="w-4 h-4" />
                 Add Card
               </button>
-            </div>
-          </div>
-
+          }
+        >
           <div className="p-4 sm:p-6 space-y-3">
             {formData.cards.length === 0 && (
               <div className="border-2 border-dashed border-black rounded-xl p-8 text-center">
@@ -883,7 +999,7 @@ const SpaceAudienceEditor = () => {
               );
             })}
           </div>
-        </section>
+        </EditorSection>
 
         {/* Save / Reset */}
         <EditorActions
@@ -895,6 +1011,42 @@ const SpaceAudienceEditor = () => {
               : savedMessage
           }
         />
+          </div>
+          </div>
+
+          <aside className="min-w-0 xl:sticky xl:top-5">
+            <div className="bg-white border-2 border-black rounded-2xl p-5 sm:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+              <button
+                type="button"
+                aria-expanded={previewOpen}
+                aria-controls="space-audience-live-preview"
+                onClick={() => setPreviewOpen((open) => !open)}
+                className="flex w-full items-start justify-between gap-4 text-left"
+              >
+                <span>
+                  <span className="block text-lg font-black text-black">
+                    Live Website Preview
+                  </span>
+                  <span className="mt-1 block text-xs font-semibold text-black/50">
+                    The original homepage section, updated as you edit.
+                  </span>
+                </span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`mt-1 h-5 w-5 shrink-0 transition-transform ${
+                    previewOpen ? "" : "-rotate-90"
+                  }`}
+                />
+              </button>
+              {previewOpen && (
+                <div id="space-audience-live-preview">
+                  <div className="my-5 border-t-2 border-black" />
+                  <ScaledSpaceAudiencePreview data={formData} />
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );

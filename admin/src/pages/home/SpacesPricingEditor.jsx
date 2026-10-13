@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   Plus,
@@ -16,6 +16,7 @@ import ColorControl from "../../components/ColorControl";
 import TypographyControls from "../../components/TypographyControls";
 import ImageUploader from "../../components/ImageUploader";
 import EditorActions from "../../components/EditorActions";
+import SpacesPricing from "../../../../client/src/components/sections/SpacesPricing";
 
 const STORAGE_KEY = "startupCafeSpacesPricing";
 const UPDATE_EVENT = "spacesPricingUpdated";
@@ -227,6 +228,112 @@ const mergeData = (parsed = {}) => ({
     : DEFAULT_DATA.galleryImages,
 });
 
+const SPACES_PRICING_PREVIEW_WIDTH = 1200;
+
+const ScaledSpacesPricingPreview = ({ data }) => {
+  const containerRef = useRef(null);
+  const contentRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+
+    if (!container || !content) return undefined;
+
+    let animationFrame;
+    const updateDimensions = () => {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = requestAnimationFrame(() => {
+        setContainerWidth(container.clientWidth);
+        setContentHeight(content.offsetHeight);
+      });
+    };
+
+    const observer = new ResizeObserver(updateDimensions);
+    observer.observe(container);
+    observer.observe(content);
+    updateDimensions();
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      observer.disconnect();
+    };
+  }, []);
+
+  const scale =
+    containerWidth > 0
+      ? Math.min(1, containerWidth / SPACES_PRICING_PREVIEW_WIDTH)
+      : 0;
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full min-w-0 overflow-hidden"
+      style={{
+        height:
+          scale > 0 && contentHeight > 0
+            ? `${contentHeight * scale}px`
+            : "auto",
+      }}
+    >
+      <div
+        ref={contentRef}
+        style={{
+          width: `${SPACES_PRICING_PREVIEW_WIDTH}px`,
+          transform: `scale(${scale || 0.01})`,
+          transformOrigin: "top left",
+        }}
+      >
+        <SpacesPricing previewData={data} isPreview />
+      </div>
+    </div>
+  );
+};
+
+const SectionHeader = ({
+  title,
+  description,
+  id,
+  open,
+  onClick,
+  action,
+}) => (
+  <div className="border-2 border-black rounded-2xl overflow-hidden bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={open}
+      className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left hover:bg-[#FFFDF9] transition-colors"
+    >
+      <div>
+        <h3 className="text-sm font-black text-black">{title}</h3>
+
+        {description && (
+          <p className="text-xs font-semibold text-black/50 mt-1">
+            {description}
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3 shrink-0">
+        {action}
+
+        <ChevronDown
+          className={`w-5 h-5 text-black transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </div>
+    </button>
+
+    {open && (
+      <div className="border-t-2 border-black p-5 bg-[#FFFDF9]">{id}</div>
+    )}
+  </div>
+);
+
 const getStoredData = () => {
   if (typeof window === "undefined") {
     return DEFAULT_DATA;
@@ -271,6 +378,7 @@ const SpacesPricingEditor = () => {
   const [savedMessage, setSavedMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(true);
 
   // Load Spaces & Pricing content from the database.
   useEffect(() => {
@@ -562,49 +670,6 @@ const SpacesPricingEditor = () => {
     }
   };
 
-  const SectionHeader = ({
-    title,
-    description,
-    id,
-    open,
-    onClick,
-    action,
-  }) => (
-    <div className="border-2 border-black rounded-2xl overflow-hidden bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-      <button
-        type="button"
-        onClick={onClick}
-        className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left hover:bg-[#FFFDF9] transition-colors"
-      >
-        <div>
-          <h3 className="text-sm font-black text-black">{title}</h3>
-
-          {description && (
-            <p className="text-xs font-semibold text-black/50 mt-1">
-              {description}
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3 shrink-0">
-          {action}
-
-          <ChevronDown
-            className={`w-5 h-5 text-black transition-transform ${
-              open ? "rotate-180" : ""
-            }`}
-          />
-        </div>
-      </button>
-
-      {open && (
-        <div className="border-t-2 border-black p-5 bg-[#FFFDF9]">
-          {id}
-        </div>
-      )}
-    </div>
-  );
-
   const renderPlanEditor = (period, plan, index) => {
     const key = `${period}-${index}`;
     const isOpen = openPlan === key;
@@ -819,7 +884,7 @@ const SpacesPricingEditor = () => {
 
   return (
     <div className="min-h-screen bg-[#F5F5F0] p-3 sm:p-5 lg:p-7">
-      <div className="max-w-[1100px] pb-28 space-y-6">
+      <div className="max-w-[1600px] pb-28 space-y-6">
         {/* Header */}
         <div className="mb-7">
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-black mt-2">
@@ -832,6 +897,8 @@ const SpacesPricingEditor = () => {
           </p>
         </div>
 
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-7 items-start">
+          <div className="min-w-0 space-y-6">
         {/* Section Content */}
         <div className="space-y-4">
           <SectionHeader
@@ -1233,6 +1300,41 @@ const SpacesPricingEditor = () => {
                 : savedMessage
           }
         />
+          </div>
+
+          <aside className="min-w-0 xl:sticky xl:top-5">
+            <div className="bg-white border-2 border-black rounded-2xl p-5 sm:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+              <button
+                type="button"
+                aria-expanded={previewOpen}
+                aria-controls="spaces-pricing-live-preview"
+                onClick={() => setPreviewOpen((open) => !open)}
+                className="flex w-full items-start justify-between gap-4 text-left"
+              >
+                <span>
+                  <span className="block text-lg font-black text-black">
+                    Live Website Preview
+                  </span>
+                  <span className="mt-1 block text-xs font-semibold text-black/50">
+                    The original homepage section, updated as you edit.
+                  </span>
+                </span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`mt-1 h-5 w-5 shrink-0 transition-transform ${
+                    previewOpen ? "" : "-rotate-90"
+                  }`}
+                />
+              </button>
+              {previewOpen && (
+                <div id="spaces-pricing-live-preview">
+                  <div className="my-5 border-t-2 border-black" />
+                  <ScaledSpacesPricingPreview data={data} />
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );

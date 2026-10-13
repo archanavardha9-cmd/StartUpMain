@@ -124,10 +124,23 @@ const getHeaderSettings = () => {
   }
 };
 
-const Navbar = ({ onOpenBooking }) => {
-  const [header, setHeader] = useState(getHeaderSettings);
+const Navbar = ({
+  onOpenBooking,
+  previewSettings,
+  isPreview = false,
+}) => {
+  const [header, setHeader] = useState(() =>
+    isPreview
+      ? normalizeHeader(previewSettings?.header || {})
+      : getHeaderSettings()
+  );
 
   useEffect(() => {
+    if (isPreview) {
+      setHeader(normalizeHeader(previewSettings?.header || {}));
+      return undefined;
+    }
+
     let active = true;
 
     const updateFromStorage = () => {
@@ -219,7 +232,7 @@ const Navbar = ({ onOpenBooking }) => {
       window.removeEventListener('siteSettingsUpdated', updateHeader);
       window.removeEventListener('storage', handleStorage);
     };
-  }, []);
+  }, [isPreview, previewSettings]);
 
   const whatsappNumber = (
     header.whatsappNumber || defaultHeader.whatsappNumber

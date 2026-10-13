@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2, Copy, ChevronDown, ChevronUp } from "lucide-react";
 
 import Field from "../../components/Field";
@@ -6,6 +6,7 @@ import TextInput from "../../components/TextInput";
 import ColorControl from "../../components/ColorControl";
 import TypographyControls from "../../components/TypographyControls";
 import EditorActions from "../../components/EditorActions";
+import TrustResults from "../../../../client/src/components/sections/TrustResults";
 
 const STORAGE_KEY = "startupCafeTrustResults";
 
@@ -196,12 +197,124 @@ const mergeData = (parsed) => ({
     : clone(DEFAULT_DATA).logos,
 });
 
+const EditorSection = ({
+  id,
+  title,
+  description,
+  headerClassName,
+  isOpen,
+  onToggle,
+  headerAction,
+  children,
+}) => (
+  <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+    <div
+      className={`flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-b-2 border-black ${headerClassName}`}
+    >
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        aria-controls={`${id}-content`}
+        onClick={onToggle}
+        className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
+      >
+        <span>
+          <span className="block text-lg font-black text-black">{title}</span>
+          {description && (
+            <span className="mt-1 block text-xs font-semibold text-black/65">
+              {description}
+            </span>
+          )}
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className={`h-5 w-5 shrink-0 transition-transform ${
+            isOpen ? "" : "-rotate-90"
+          }`}
+        />
+      </button>
+      {headerAction}
+    </div>
+    {isOpen && <div id={`${id}-content`}>{children}</div>}
+  </section>
+);
+
+const TRUST_RESULTS_PREVIEW_WIDTH = 1200;
+
+const ScaledTrustResultsPreview = ({ data }) => {
+  const containerRef = useRef(null);
+  const contentRef = useRef(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+
+    if (!container || !content) return undefined;
+
+    let animationFrame;
+    const updateDimensions = () => {
+      cancelAnimationFrame(animationFrame);
+      animationFrame = requestAnimationFrame(() => {
+        setContainerWidth(container.clientWidth);
+        setContentHeight(content.offsetHeight);
+      });
+    };
+
+    const observer = new ResizeObserver(updateDimensions);
+    observer.observe(container);
+    observer.observe(content);
+    updateDimensions();
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      observer.disconnect();
+    };
+  }, []);
+
+  const scale =
+    containerWidth > 0
+      ? Math.min(1, containerWidth / TRUST_RESULTS_PREVIEW_WIDTH)
+      : 0;
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full min-w-0 overflow-hidden"
+      style={{
+        height:
+          scale > 0 && contentHeight > 0
+            ? `${contentHeight * scale}px`
+            : "auto",
+      }}
+    >
+      <div
+        ref={contentRef}
+        style={{
+          width: `${TRUST_RESULTS_PREVIEW_WIDTH}px`,
+          transform: `scale(${scale || 0.01})`,
+          transformOrigin: "top left",
+        }}
+      >
+        <TrustResults previewData={data} isPreview />
+      </div>
+    </div>
+  );
+};
+
 const TrustResultsEditor = () => {
   const [formData, setFormData] = useState(clone(DEFAULT_DATA));
 
   const [openStat, setOpenStat] = useState(null);
   const [openReview, setOpenReview] = useState(null);
   const [savedMessage, setSavedMessage] = useState("");
+  const [openSection, setOpenSection] = useState("content");
+  const [previewOpen, setPreviewOpen] = useState(true);
+
+  const toggleSection = (section) => {
+    setOpenSection((current) => (current === section ? null : section));
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -247,6 +360,7 @@ const TrustResultsEditor = () => {
       cancelled = true;
     };
   }, []);
+
   const updateSection = (key, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -491,11 +605,11 @@ const TrustResultsEditor = () => {
 
   return (
     <div className="min-h-screen bg-[#F5F5F0] p-3 sm:p-5 lg:p-7">
-      <div className="max-w-[1100px] pb-28 space-y-6">
+      <div className="max-w-[1600px] pb-28 space-y-6">
         {/* Header */}
         <div className="mb-7">
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-black mt-2">
-            Trust & Results
+            Our Impact
           </h1>
 
           <p className="text-sm font-semibold text-black/55 mt-2 max-w-2xl">
@@ -504,15 +618,17 @@ const TrustResultsEditor = () => {
           </p>
         </div>
 
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-7 items-start">
+          <div className="min-w-0 space-y-6">
         {/* Section Content */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#F472B6]">
-            <h2 className="text-lg font-black text-black">Section Content</h2>
-
-            <p className="text-xs font-semibold text-black/65 mt-1">
-              Edit the heading shown at the top of the section.
-            </p>
-          </div>
+        <EditorSection
+          id="trust-content"
+          title="Section Content"
+          description="Edit the heading shown at the top of the section."
+          headerClassName="bg-[#F472B6]"
+          isOpen={openSection === "content"}
+          onToggle={() => toggleSection("content")}
+        >
 
           <div className="p-5 sm:p-6 space-y-6">
             <Field label="Badge Text">
@@ -538,14 +654,17 @@ const TrustResultsEditor = () => {
               </Field>
             </div>
           </div>
-        </section>
+        </EditorSection>
 
         {/* Section Colors */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#FFDE4D]">
-            <h2 className="text-lg font-black text-black">Section Colors</h2>
-          </div>
-
+        <EditorSection
+          id="trust-colors"
+          title="Section Colors"
+          description="Control the section background, badge and heading colors."
+          headerClassName="bg-[#FFDE4D]"
+          isOpen={openSection === "colors"}
+          onToggle={() => toggleSection("colors")}
+        >
           <div className="p-5 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <ColorControl
               label="Section Background"
@@ -571,18 +690,17 @@ const TrustResultsEditor = () => {
               onChange={(value) => updateSection("highlightColor", value)}
             />
           </div>
-        </section>
+        </EditorSection>
 
         {/* Typography */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#C084FC]">
-            <h2 className="text-lg font-black text-black">Typography</h2>
-
-            <p className="text-xs font-semibold text-black/65 mt-1">
-              Control typography for each content level.
-            </p>
-          </div>
-
+        <EditorSection
+          id="trust-typography"
+          title="Typography"
+          description="Control typography for each content level."
+          headerClassName="bg-[#C084FC]"
+          isOpen={openSection === "typography"}
+          onToggle={() => toggleSection("typography")}
+        >
           <div className="p-5 sm:p-6 space-y-8">
             {[
               ["badge", "Badge"],
@@ -608,33 +726,30 @@ const TrustResultsEditor = () => {
               </div>
             ))}
           </div>
-        </section>
+        </EditorSection>
 
         {/* Stats */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#A3E635]">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-black text-black">
-                  Impact Statistics
-                </h2>
-
-                <p className="text-xs font-semibold text-black/65 mt-1">
-                  Manage the metric cards shown on the left.
-                </p>
-              </div>
-
+        <EditorSection
+          id="trust-stats"
+          title="Impact Statistics"
+          description="Manage the metric cards shown on the left."
+          headerClassName="bg-[#A3E635]"
+          isOpen={openSection === "stats"}
+          onToggle={() => toggleSection("stats")}
+          headerAction={
               <button
                 type="button"
-                onClick={addStat}
+                onClick={() => {
+                  addStat();
+                  setOpenSection("stats");
+                }}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FFDE4D] border-2 border-black rounded-xl text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all"
               >
                 <Plus className="w-4 h-4" />
                 Add Stat
               </button>
-            </div>
-          </div>
-
+          }
+        >
           <div className="p-4 sm:p-6 space-y-3">
             {formData.stats.map((stat, index) => {
               const isOpen = openStat === index;
@@ -740,33 +855,30 @@ const TrustResultsEditor = () => {
               );
             })}
           </div>
-        </section>
+        </EditorSection>
 
         {/* Reviews */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#F472B6]">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-black text-black">
-                  Customer Reviews
-                </h2>
-
-                <p className="text-xs font-semibold text-black/65 mt-1">
-                  Manage the testimonials used by the review carousel.
-                </p>
-              </div>
-
+        <EditorSection
+          id="trust-reviews"
+          title="Customer Reviews"
+          description="Manage the testimonials used by the review carousel."
+          headerClassName="bg-[#F472B6]"
+          isOpen={openSection === "reviews"}
+          onToggle={() => toggleSection("reviews")}
+          headerAction={
               <button
                 type="button"
-                onClick={addReview}
+                onClick={() => {
+                  addReview();
+                  setOpenSection("reviews");
+                }}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#A3E635] border-2 border-black rounded-xl text-xs font-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5 transition-all"
               >
                 <Plus className="w-4 h-4" />
                 Add Review
               </button>
-            </div>
-          </div>
-
+          }
+        >
           <div className="p-4 sm:p-6 space-y-3">
             {formData.reviews.map((review, index) => {
               const isOpen = openReview === index;
@@ -860,20 +972,17 @@ const TrustResultsEditor = () => {
               );
             })}
           </div>
-        </section>
+        </EditorSection>
 
         {/* Teams */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#FFDE4D]">
-            <h2 className="text-lg font-black text-black">
-              Professional Teams
-            </h2>
-
-            <p className="text-xs font-semibold text-black/65 mt-1">
-              Manage the label and company badges displayed below the reviews.
-            </p>
-          </div>
-
+        <EditorSection
+          id="trust-teams"
+          title="Professional Teams"
+          description="Manage the label and company badges displayed below the reviews."
+          headerClassName="bg-[#FFDE4D]"
+          isOpen={openSection === "teams"}
+          onToggle={() => toggleSection("teams")}
+        >
           <div className="p-5 sm:p-6 space-y-6">
             <Field label="Section Label">
               <TextInput
@@ -933,16 +1042,17 @@ const TrustResultsEditor = () => {
               </div>
             </div>
           </div>
-        </section>
+        </EditorSection>
 
         {/* Review / Team Colors */}
-        <section className="bg-white border-2 border-black rounded-2xl shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-          <div className="px-5 sm:px-6 py-4 border-b-2 border-black bg-[#C084FC]">
-            <h2 className="text-lg font-black text-black">
-              Review & Team Colors
-            </h2>
-          </div>
-
+        <EditorSection
+          id="trust-review-colors"
+          title="Review & Team Colors"
+          description="Adjust colors used by the reviews and professional team badges."
+          headerClassName="bg-[#C084FC]"
+          isOpen={openSection === "review-colors"}
+          onToggle={() => toggleSection("review-colors")}
+        >
           <div className="p-5 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <ColorControl
               label="Review Card Background"
@@ -992,7 +1102,7 @@ const TrustResultsEditor = () => {
               onChange={(value) => updateColors("teamLogoText", value)}
             />
           </div>
-        </section>
+        </EditorSection>
 
         {/* Actions */}
         <EditorActions
@@ -1000,6 +1110,41 @@ const TrustResultsEditor = () => {
           onReset={handleReset}
           savedMessage={savedMessage}
         />
+          </div>
+
+          <aside className="min-w-0 xl:sticky xl:top-5">
+            <div className="bg-white border-2 border-black rounded-2xl p-5 sm:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+              <button
+                type="button"
+                aria-expanded={previewOpen}
+                aria-controls="trust-results-live-preview"
+                onClick={() => setPreviewOpen((open) => !open)}
+                className="flex w-full items-start justify-between gap-4 text-left"
+              >
+                <span>
+                  <span className="block text-lg font-black text-black">
+                    Live Website Preview
+                  </span>
+                  <span className="mt-1 block text-xs font-semibold text-black/50">
+                    The original homepage section, updated as you edit.
+                  </span>
+                </span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`mt-1 h-5 w-5 shrink-0 transition-transform ${
+                    previewOpen ? "" : "-rotate-90"
+                  }`}
+                />
+              </button>
+              {previewOpen && (
+                <div id="trust-results-live-preview">
+                  <div className="my-5 border-t-2 border-black" />
+                  <ScaledTrustResultsPreview data={formData} />
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );
