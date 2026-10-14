@@ -3,19 +3,34 @@ const { successResponse, errorResponse } = require('../utils/apiResponse');
 const { sendLeadNotificationEmail } = require('../utils/email');
 
 /**
- * @desc    Create a new Lead/Inqu iry
+ * @desc    Create a new Lead/Inquiry
  * @route   POST /api/leads
  * @access  Public
  */
 const createLead = async (req, res, next) => {
   try {
-    const { fullName, phone, email, workspaceType, message } = req.body;
+    const {
+      fullName,
+      phone,
+      email,
+      workspaceType,
+      duration,
+      startDate,
+      people,
+      message,
+    } = req.body;
 
     const lead = await Lead.create({
       fullName,
       phone,
       email,
       workspaceType,
+      duration: duration || '',
+      startDate: startDate || null,
+      people:
+        people !== undefined && people !== '' && people !== null
+          ? Number(people)
+          : null,
       message: message || '',
     });
 
@@ -32,6 +47,11 @@ const createLead = async (req, res, next) => {
         phone: lead.phone,
         email: lead.email,
         workspaceType: lead.workspaceType,
+        duration: lead.duration,
+        startDate: lead.startDate,
+        people: lead.people,
+        message: lead.message,
+        status: lead.status,
         createdAt: lead.createdAt,
       }
     );
@@ -48,7 +68,13 @@ const createLead = async (req, res, next) => {
 const getLeads = async (req, res, next) => {
   try {
     const leads = await Lead.find().sort({ createdAt: -1 });
-    return successResponse(res, 200, 'Leads fetched successfully', leads);
+
+    return successResponse(
+      res,
+      200,
+      'Leads fetched successfully',
+      leads
+    );
   } catch (error) {
     next(error);
   }

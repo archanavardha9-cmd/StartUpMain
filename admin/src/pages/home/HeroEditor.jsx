@@ -660,7 +660,7 @@ const HeroEditor = () => {
               description="Manage the existing accent colors without changing the original layout."
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
               <Field label="Badge Background">
                 <ColorControl
                   value={formData.colors.badge}

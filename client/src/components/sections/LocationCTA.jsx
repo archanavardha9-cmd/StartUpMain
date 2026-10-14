@@ -1,12 +1,5 @@
-
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  Phone,
-  MessageCircle,
-  Navigation,
-  MapPin,
-  Mail,
-} from "lucide-react";
+import { Phone, MessageCircle, Navigation, MapPin, Mail } from "lucide-react";
 import { createLeadInquiry } from "../../services/leadService";
 import { useToast } from "../common/Toast";
 
@@ -19,14 +12,86 @@ const API_BASE_URL = (
 const API_URL = `${API_BASE_URL}/api/cms/location-cta`;
 
 const DEFAULT_BOOKING_FIELDS = [
-  { id: "fullName", name: "fullName", label: "Full Name", placeholder: "Rohan Singh", type: "text", required: true, enabled: true, options: [] },
-  { id: "email", name: "email", label: "Email Address", placeholder: "rohan@example.com", type: "email", required: true, enabled: true, options: [] },
-  { id: "phone", name: "phone", label: "Phone Number", placeholder: "98765 43210", type: "tel", required: true, enabled: true, options: [] },
-  { id: "planType", name: "planType", label: "Plan Type", placeholder: "", type: "plan", required: true, enabled: true, options: [] },
-  { id: "duration", name: "duration", label: "Duration", placeholder: "", type: "duration", required: true, enabled: true, options: [] },
-  { id: "startDate", name: "startDate", label: "Start Date", placeholder: "", type: "date", required: false, enabled: true, options: [] },
-  { id: "people", name: "people", label: "People", placeholder: "1", type: "number", required: false, enabled: true, options: [] },
-  { id: "message", name: "message", label: "Message (Optional)", placeholder: "Special requirements?", type: "textarea", required: false, enabled: true, options: [] },
+  {
+    id: "fullName",
+    name: "fullName",
+    label: "Full Name",
+    placeholder: "Rohan Singh",
+    type: "text",
+    required: true,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "email",
+    name: "email",
+    label: "Email Address",
+    placeholder: "rohan@example.com",
+    type: "email",
+    required: true,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "phone",
+    name: "phone",
+    label: "Phone Number",
+    placeholder: "98765 43210",
+    type: "tel",
+    required: true,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "planType",
+    name: "planType",
+    label: "Plan Type",
+    placeholder: "",
+    type: "plan",
+    required: true,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "duration",
+    name: "duration",
+    label: "Duration",
+    placeholder: "",
+    type: "duration",
+    required: true,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "startDate",
+    name: "startDate",
+    label: "Start Date",
+    placeholder: "",
+    type: "date",
+    required: false,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "people",
+    name: "people",
+    label: "People",
+    placeholder: "1",
+    type: "number",
+    required: false,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "message",
+    name: "message",
+    label: "Message (Optional)",
+    placeholder: "Special requirements?",
+    type: "textarea",
+    required: false,
+    enabled: true,
+    options: [],
+  },
 ];
 
 const DEFAULT_DATA = {
@@ -37,23 +102,28 @@ const DEFAULT_DATA = {
     fields: DEFAULT_BOOKING_FIELDS,
     submitButtonText: "Confirm Booking",
     whatsappButtonText: "Quick Inquiry via WhatsApp",
-    whatsappButtonUrl: "https://wa.me/919670111167?text=Hi%20Startup%20Cafe,%20I'd%20like%20to%20make%20a%20booking%20inquiry.",
+    whatsappButtonUrl:
+      "https://wa.me/919670111167?text=Hi%20Startup%20Cafe,%20I'd%20like%20to%20make%20a%20booking%20inquiry.",
     submitButtonColor: "#FFDE4D",
     durationActiveColor: "#C084FC",
   },
   location: {
     title: "Location & Directions",
     subtitle: "Vijay Chowk, Gorakhpur",
-    address: "2nd Floor, Opposite Vijay Cinema, Vijay Chowk, Gorakhpur, India, 273001",
+    address:
+      "2nd Floor, Opposite Vijay Cinema, Vijay Chowk, Gorakhpur, India, 273001",
     phone: "+91 96701 11167",
     phoneLink: "tel:+919670111167",
     email: "info@startupcafe.co.in",
     emailLink: "mailto:info@startupcafe.co.in",
-    mapEmbedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3562.909569720536!2d83.3731993753051!3d26.747285176747204!2m3!1f0!2f0!3f0!3m2!1i1242!2i768!4f13.1!3m3!1m2!1s0x3991448b11111111%3A0x1111111111111111!2sPark%20Road%20Gorakhpur!5e0!3m2!1sen!2sin!4v1711200000000!5m2!1sen!2sin",
+    mapEmbedUrl:
+      "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3562.909569720536!2d83.3731993753051!3d26.747285176747204!2m3!1f0!2f0!3f0!3m2!1i1242!2i768!4f13.1!3m3!1m2!1s0x3991448b11111111%3A0x1111111111111111!2sPark%20Road%20Gorakhpur!5e0!3m2!1sen!2sin!4v1711200000000!5m2!1sen!2sin",
     directionsButtonText: "Get Directions",
-    directionsButtonUrl: "https://wa.me/919670111167?text=Hi%20Startup%20Cafe,%20I'd%20like%20to%20get%20the%20exact%20location%20and%20directions%20to%20your%20coworking%20space.",
+    directionsButtonUrl:
+      "https://wa.me/919670111167?text=Hi%20Startup%20Cafe,%20I'd%20like%20to%20get%20the%20exact%20location%20and%20directions%20to%20your%20coworking%20space.",
     whatsappButtonText: "WhatsApp Now",
-    whatsappButtonUrl: "https://wa.me/919670111167?text=Hi%20Startup%20Cafe,%20I'd%20like%20to%20visit%20your%20coworking%20space%20at%20Vijay%20Chowk.",
+    whatsappButtonUrl:
+      "https://wa.me/919670111167?text=Hi%20Startup%20Cafe,%20I'd%20like%20to%20visit%20your%20coworking%20space%20at%20Vijay%20Chowk.",
     subtitleColor: "#F97316",
     addressIconColor: "#A3E635",
     phoneIconColor: "#FFDE4D",
@@ -66,14 +136,86 @@ const DEFAULT_DATA = {
 const cloneData = (data) => JSON.parse(JSON.stringify(data));
 
 const getDefaultFieldsFromOldData = (booking = {}) => [
-  { id: "fullName", name: "fullName", label: booking.fullNameLabel || "Full Name", placeholder: booking.fullNamePlaceholder || "Rohan Singh", type: "text", required: true, enabled: true, options: [] },
-  { id: "email", name: "email", label: booking.emailLabel || "Email Address", placeholder: booking.emailPlaceholder || "rohan@example.com", type: "email", required: true, enabled: true, options: [] },
-  { id: "phone", name: "phone", label: booking.phoneLabel || "Phone Number", placeholder: booking.phonePlaceholder || "98765 43210", type: "tel", required: true, enabled: true, options: [] },
-  { id: "planType", name: "planType", label: booking.planLabel || "Plan Type", placeholder: "", type: "plan", required: true, enabled: true, options: [] },
-  { id: "duration", name: "duration", label: booking.durationLabel || "Duration", placeholder: "", type: "duration", required: true, enabled: true, options: [] },
-  { id: "startDate", name: "startDate", label: booking.startDateLabel || "Start Date", placeholder: "", type: "date", required: false, enabled: true, options: [] },
-  { id: "people", name: "people", label: booking.peopleLabel || "People", placeholder: booking.peoplePlaceholder || "1", type: "number", required: false, enabled: true, options: [] },
-  { id: "message", name: "message", label: booking.messageLabel || "Message (Optional)", placeholder: booking.messagePlaceholder || "Special requirements?", type: "textarea", required: false, enabled: true, options: [] },
+  {
+    id: "fullName",
+    name: "fullName",
+    label: booking.fullNameLabel || "Full Name",
+    placeholder: booking.fullNamePlaceholder || "Rohan Singh",
+    type: "text",
+    required: true,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "email",
+    name: "email",
+    label: booking.emailLabel || "Email Address",
+    placeholder: booking.emailPlaceholder || "rohan@example.com",
+    type: "email",
+    required: true,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "phone",
+    name: "phone",
+    label: booking.phoneLabel || "Phone Number",
+    placeholder: booking.phonePlaceholder || "98765 43210",
+    type: "tel",
+    required: true,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "planType",
+    name: "planType",
+    label: booking.planLabel || "Plan Type",
+    placeholder: "",
+    type: "plan",
+    required: true,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "duration",
+    name: "duration",
+    label: booking.durationLabel || "Duration",
+    placeholder: "",
+    type: "duration",
+    required: true,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "startDate",
+    name: "startDate",
+    label: booking.startDateLabel || "Start Date",
+    placeholder: "",
+    type: "date",
+    required: false,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "people",
+    name: "people",
+    label: booking.peopleLabel || "People",
+    placeholder: booking.peoplePlaceholder || "1",
+    type: "number",
+    required: false,
+    enabled: true,
+    options: [],
+  },
+  {
+    id: "message",
+    name: "message",
+    label: booking.messageLabel || "Message (Optional)",
+    placeholder: booking.messagePlaceholder || "Special requirements?",
+    type: "textarea",
+    required: false,
+    enabled: true,
+    options: [],
+  },
 ];
 
 const normalizeFields = (booking = {}) => {
@@ -94,7 +236,8 @@ const normalizeFields = (booking = {}) => {
 
 const mergeData = (value) => {
   const defaults = cloneData(DEFAULT_DATA);
-  const parsed = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const parsed =
+    value && typeof value === "object" && !Array.isArray(value) ? value : {};
 
   const booking = { ...defaults.booking, ...(parsed.booking || {}) };
   booking.whatsappButtonUrl =
@@ -105,9 +248,18 @@ const mergeData = (value) => {
 
   const oldLocation = parsed.location || {};
   const location = { ...defaults.location, ...oldLocation };
-  location.phoneLink = oldLocation.phoneLink ?? oldLocation.phoneUrl ?? defaults.location.phoneLink;
-  location.emailLink = oldLocation.emailLink ?? oldLocation.emailUrl ?? defaults.location.emailLink;
-  location.mapEmbedUrl = oldLocation.mapEmbedUrl ?? oldLocation.mapUrl ?? defaults.location.mapEmbedUrl;
+  location.phoneLink =
+    oldLocation.phoneLink ??
+    oldLocation.phoneUrl ??
+    defaults.location.phoneLink;
+  location.emailLink =
+    oldLocation.emailLink ??
+    oldLocation.emailUrl ??
+    defaults.location.emailLink;
+  location.mapEmbedUrl =
+    oldLocation.mapEmbedUrl ??
+    oldLocation.mapUrl ??
+    defaults.location.mapEmbedUrl;
 
   return {
     ...defaults,
@@ -144,14 +296,16 @@ const createInitialFormData = (fields) => {
 const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
   const { addToast } = useToast();
   const [content, setContent] = useState(() =>
-    isPreview ? mergeData(previewData || {}) : getStoredData()
+    isPreview ? mergeData(previewData || {}) : getStoredData(),
   );
   const [formData, setFormData] = useState(() =>
     createInitialFormData(
       normalizeFields(
-        isPreview ? mergeData(previewData || {}).booking : getStoredData().booking
-      )
-    )
+        isPreview
+          ? mergeData(previewData || {}).booking
+          : getStoredData().booking,
+      ),
+    ),
   );
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -174,7 +328,8 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
   const fetchContent = useCallback(async () => {
     try {
       const response = await fetch(API_URL);
-      if (!response.ok) throw new Error(`Unable to load Location CTA (${response.status})`);
+      if (!response.ok)
+        throw new Error(`Unable to load Location CTA (${response.status})`);
 
       const result = await response.json();
       const databaseContent = result?.content;
@@ -230,7 +385,7 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
   }, [selectedPlan]);
 
   const enabledFields = normalizeFields(content.booking).filter(
-    (field) => field.enabled !== false
+    (field) => field.enabled !== false,
   );
   const hasField = (name) => enabledFields.some((field) => field.name === name);
 
@@ -252,9 +407,10 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
 
   const handleDurationChange = (newDuration) => {
     setFormData((previous) => {
-      const validOptions = newDuration === "Daily"
-        ? ["Conference Room", "Day Pass", "Private Cabin"]
-        : ["Dedicated Desk", "Private Cabin"];
+      const validOptions =
+        newDuration === "Daily"
+          ? ["Conference Room", "Day Pass", "Private Cabin"]
+          : ["Dedicated Desk", "Private Cabin"];
 
       return {
         ...previous,
@@ -273,16 +429,27 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
       const value = formData[field.name];
       const trimmedValue = typeof value === "string" ? value.trim() : value;
 
-      if (field.required && (!trimmedValue || trimmedValue === "Select a Plan")) {
+      if (
+        field.required &&
+        (!trimmedValue || trimmedValue === "Select a Plan")
+      ) {
         newErrors[field.name] = `${field.label} is required`;
       }
     });
 
-    if (hasField("phone") && formData.phone && !/^[6-9]\d{9}$/.test(formData.phone.trim())) {
+    if (
+      hasField("phone") &&
+      formData.phone &&
+      !/^[6-9]\d{9}$/.test(formData.phone.trim())
+    ) {
       newErrors.phone = "Please enter a valid 10-digit Indian phone number";
     }
 
-    if (hasField("email") && formData.email && !/\S+@\S+\.\S+/.test(formData.email.trim())) {
+    if (
+      hasField("email") &&
+      formData.email &&
+      !/\S+@\S+\.\S+/.test(formData.email.trim())
+    ) {
       newErrors.email = "Enter a valid email";
     }
 
@@ -296,41 +463,63 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
     if (isPreview) return;
     if (!validate()) return;
 
     setIsSubmitting(true);
 
     try {
-      const standardFields = {
+      const customFieldLines = enabledFields
+        .filter(
+          (field) =>
+            ![
+              "fullName",
+              "phone",
+              "email",
+              "planType",
+              "duration",
+              "startDate",
+              "people",
+              "message",
+            ].includes(field.name),
+        )
+        .map(
+          (field) =>
+            `${field.label}: ${formData[field.name] || "Not provided"}`,
+        );
+
+      const messageParts = [];
+
+      if (hasField("message") && formData.message?.trim()) {
+        messageParts.push(formData.message.trim());
+      }
+
+      if (customFieldLines.length) {
+        messageParts.push(...customFieldLines);
+      }
+
+      const response = await createLeadInquiry({
         fullName: formData.fullName || "",
         phone: formData.phone || "",
         email: formData.email || "",
-        workspaceType: formData.planType || "Not specified",
-      };
-
-      const customFieldLines = enabledFields
-        .filter((field) => ![
-          "fullName", "phone", "email", "planType",
-          "duration", "startDate", "people", "message",
-        ].includes(field.name))
-        .map((field) => `${field.label}: ${formData[field.name] || "Not provided"}`);
-
-      const messageParts = [];
-      if (hasField("duration")) messageParts.push(`Duration: ${formData.duration || "Not specified"}`);
-      if (hasField("startDate")) messageParts.push(`Start Date: ${formData.startDate || "Not specified"}`);
-      if (hasField("people")) messageParts.push(`People: ${formData.people || "Not specified"}`);
-      if (hasField("message")) messageParts.push(`Note: ${formData.message || "Not provided"}`);
-      if (customFieldLines.length) messageParts.push(...customFieldLines);
-
-      const response = await createLeadInquiry({
-        ...standardFields,
+        workspaceType: formData.planType || "",
+        duration: hasField("duration") ? formData.duration || "" : "",
+        startDate:
+          hasField("startDate") && formData.startDate
+            ? formData.startDate
+            : null,
+        people:
+          hasField("people") && formData.people !== ""
+            ? Number(formData.people)
+            : null,
         message: messageParts.join(" | "),
       });
 
       addToast(
-        response.message || "Thank you! Your booking has been confirmed successfully. We will call you shortly!",
-        "success"
+        response.message ||
+          "Your booking inquiry has been submitted successfully. We will contact you shortly.",
+        "success",
       );
 
       setFormData(createInitialFormData(normalizeFields(content.booking)));
@@ -340,6 +529,7 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
         error.errors?.[0]?.message ||
         error.message ||
         "Failed to submit. Please try again.";
+
       addToast(errorMessage, "error");
     } finally {
       setIsSubmitting(false);
@@ -355,14 +545,18 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
     ${errors[fieldName] ? "bg-rose-50 border-rose-500" : ""}
   `;
 
-  const renderError = (fieldName) => errors[fieldName] ? (
-    <p className="text-[10px] text-rose-500 mt-1 font-bold">{errors[fieldName]}</p>
-  ) : null;
+  const renderError = (fieldName) =>
+    errors[fieldName] ? (
+      <p className="text-[10px] text-rose-500 mt-1 font-bold">
+        {errors[fieldName]}
+      </p>
+    ) : null;
 
   const renderPlanField = (field) => (
     <div>
       <label className="block text-[10px] font-black text-black/60 uppercase tracking-widest mb-1.5">
-        {field.label}{field.required ? " *" : ""}
+        {field.label}
+        {field.required ? " *" : ""}
       </label>
       <select
         name="planType"
@@ -391,7 +585,8 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
   const renderDurationField = (field) => (
     <div>
       <label className="block text-[10px] font-black text-black/60 uppercase tracking-widest mb-1.5">
-        {field.label}{field.required ? " *" : ""}
+        {field.label}
+        {field.required ? " *" : ""}
       </label>
       <div className="bg-[#FAF7F2] p-1 border-2 border-black rounded-xl flex items-center h-10 w-full relative shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
         {["Daily", "Monthly"].map((duration) => (
@@ -404,9 +599,11 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
                 ? "text-black border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]"
                 : "text-black/50 hover:text-black"
             }`}
-            style={formData.duration === duration
-              ? { backgroundColor: content.booking.durationActiveColor }
-              : undefined}
+            style={
+              formData.duration === duration
+                ? { backgroundColor: content.booking.durationActiveColor }
+                : undefined
+            }
           >
             {duration}
           </button>
@@ -431,7 +628,8 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
 
     const label = (
       <label className="block text-[10px] font-black text-black/60 uppercase tracking-widest mb-1.5">
-        {field.label}{field.required ? " *" : ""}
+        {field.label}
+        {field.required ? " *" : ""}
       </label>
     );
 
@@ -439,7 +637,11 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
       return (
         <div>
           {label}
-          <textarea {...commonProps} rows={3} className={`${renderInputClass(field.name)} font-bold resize-y`} />
+          <textarea
+            {...commonProps}
+            rows={3}
+            className={`${renderInputClass(field.name)} font-bold resize-y`}
+          />
           {renderError(field.name)}
         </div>
       );
@@ -449,10 +651,15 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
       return (
         <div>
           {label}
-          <select {...commonProps} className={`${renderInputClass(field.name)} font-bold`}>
+          <select
+            {...commonProps}
+            className={`${renderInputClass(field.name)} font-bold`}
+          >
             <option value="">{field.placeholder || "Select an option"}</option>
             {(field.options || []).map((option) => (
-              <option key={option} value={option}>{option}</option>
+              <option key={option} value={option}>
+                {option}
+              </option>
             ))}
           </select>
           {renderError(field.name)}
@@ -490,13 +697,17 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
           <div className="lg:col-span-6 bg-white p-6 sm:p-8 rounded-[20px] border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
             <div className="mb-6">
               <h3 className="text-xl font-black text-black">{booking.title}</h3>
-              <p className="text-xs text-black font-semibold mt-1.5 max-w-sm">{booking.description}</p>
+              <p className="text-xs text-black font-semibold mt-1.5 max-w-sm">
+                {booking.description}
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-left">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {fieldGroups.map((field) => (
-                  <React.Fragment key={field.id}>{renderField(field)}</React.Fragment>
+                  <React.Fragment key={field.id}>
+                    {renderField(field)}
+                  </React.Fragment>
                 ))}
               </div>
 
@@ -529,26 +740,44 @@ const LocationCTA = ({ selectedPlan, previewData, isPreview = false }) => {
           <div className="lg:col-span-6 bg-white p-6 sm:p-8 rounded-[20px] border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between">
             <div className="space-y-4">
               <div>
-                <h3 className="text-lg font-black text-black">{location.title}</h3>
-                <p className="text-[10px] font-black uppercase tracking-wider mt-0.5" style={{ color: location.subtitleColor }}>
+                <h3 className="text-lg font-black text-black">
+                  {location.title}
+                </h3>
+                <p
+                  className="text-[10px] font-black uppercase tracking-wider mt-0.5"
+                  style={{ color: location.subtitleColor }}
+                >
                   {location.subtitle}
                 </p>
               </div>
 
               <div className="space-y-3.5 text-xs text-black font-semibold">
                 <div className="flex items-start gap-2.5">
-                  <MapPin className="w-4.5 h-4.5 text-black p-0.5 border border-black rounded-md shrink-0 mt-0.5" style={{ backgroundColor: location.addressIconColor }} />
+                  <MapPin
+                    className="w-4.5 h-4.5 text-black p-0.5 border border-black rounded-md shrink-0 mt-0.5"
+                    style={{ backgroundColor: location.addressIconColor }}
+                  />
                   <span>{location.address}</span>
                 </div>
 
                 <div className="flex items-start gap-2.5">
-                  <Phone className="w-4.5 h-4.5 text-black p-0.5 border border-black rounded-md shrink-0 mt-0.5" style={{ backgroundColor: location.phoneIconColor }} />
-                  <a href={location.phoneLink} className="hover:underline">{location.phone}</a>
+                  <Phone
+                    className="w-4.5 h-4.5 text-black p-0.5 border border-black rounded-md shrink-0 mt-0.5"
+                    style={{ backgroundColor: location.phoneIconColor }}
+                  />
+                  <a href={location.phoneLink} className="hover:underline">
+                    {location.phone}
+                  </a>
                 </div>
 
                 <div className="flex items-start gap-2.5">
-                  <Mail className="w-4.5 h-4.5 text-black p-0.5 border border-black rounded-md shrink-0 mt-0.5" style={{ backgroundColor: location.emailIconColor }} />
-                  <a href={location.emailLink} className="hover:underline">{location.email}</a>
+                  <Mail
+                    className="w-4.5 h-4.5 text-black p-0.5 border border-black rounded-md shrink-0 mt-0.5"
+                    style={{ backgroundColor: location.emailIconColor }}
+                  />
+                  <a href={location.emailLink} className="hover:underline">
+                    {location.email}
+                  </a>
                 </div>
               </div>
 
