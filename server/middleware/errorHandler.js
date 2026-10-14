@@ -22,7 +22,8 @@ const errorHandler = (err, req, res, next) => {
     return errorResponse(res, 400, 'Duplicate field value entered');
   }
 
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  const statusCode =
+    err.status || err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
   return errorResponse(
     res,
     statusCode,

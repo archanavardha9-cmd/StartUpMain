@@ -91,6 +91,10 @@ const DEFAULT_HERO = {
 const mergeHeroData = (data = {}) => ({
   ...DEFAULT_HERO,
   ...data,
+  heroImage:
+    data.heroImage?.startsWith('blob:')
+      ? DEFAULT_HERO.heroImage
+      : data.heroImage || DEFAULT_HERO.heroImage,
 
   typography: {
     ...DEFAULT_HERO.typography,
@@ -402,10 +406,7 @@ const Hero = ({
           >
             <div className="relative rounded-2xl overflow-hidden border-4 border-black aspect-[4/3] sm:aspect-[16/11] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
               <img
-                src={
-                  heroData.heroImage ||
-                  '/ChatGPT Image Jul 22, 2026, 01_23_09 PM.webp'
-                }
+                src={heroData.heroImage}
                 alt="Startup Cafe Modern Coworking Space Gorakhpur"
                 className="w-full h-full object-cover"
                 loading="eager"

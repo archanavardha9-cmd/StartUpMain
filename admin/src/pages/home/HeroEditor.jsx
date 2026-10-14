@@ -100,6 +100,10 @@ const cloneDefault = () => JSON.parse(JSON.stringify(DEFAULT_HERO));
 const normalizeHero = (parsed = {}) => ({
   ...cloneDefault(),
   ...parsed,
+  heroImage:
+    parsed.heroImage?.startsWith('blob:')
+      ? DEFAULT_HERO.heroImage
+      : parsed.heroImage || DEFAULT_HERO.heroImage,
 
   typography: {
     heading: {

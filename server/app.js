@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 const leadRoutes = require('./routes/leadRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const cmsRoutes = require('./routes/cmsRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 console.log("CMS ROUTES LOADED");
 
@@ -51,9 +52,22 @@ const limiter = rateLimit({
   max: 100, // Limit each IP to 100 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.path === '/cms' || req.path.startsWith('/cms/'),
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again after 15 minutes.',
+  },
+});
+
+// CMS editors make repeated reads and saves while content is being updated.
+const cmsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many CMS requests from this IP. Please try again later.',
   },
 });
 
@@ -71,7 +85,10 @@ const leadLimiter = rateLimit({
 
 app.use('/api/', limiter);
 app.use('/api/leads', leadLimiter, leadRoutes);
-app.use('/api/cms', cmsRoutes);
+app.use('/api/cms', cmsLimiter, cmsRoutes);
+app.use('/api/auth', authRoutes);
+
+console.log('Auth routes registered');
 
 // Health check endpoint
 app.get('/health', (req, res) => {

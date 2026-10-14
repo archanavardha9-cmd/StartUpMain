@@ -1,12 +1,24 @@
 const express = require('express');
 const router = express.Router();
-const { createLead, getLeads } = require('../controllers/leadController');
-const { validateLeadInput } = require('../middleware/validateLead');
 
-// POST /api/leads - Create new lead with validation
+const {
+  createLead,
+  getLeads,
+  getLeadById,
+  updateLeadStatus,
+  getLeadStats,
+} = require('../controllers/leadController');
+
+const { validateLeadInput } = require('../middleware/validateLead');
+const authMiddleware = require('../middleware/authMiddleware');
+
+// Public: website visitors can submit booking inquiries
 router.post('/', validateLeadInput, createLead);
 
-// GET /api/leads - Retrieve leads list
-router.get('/', getLeads);
+// Protected: only authenticated admins can manage leads
+router.get('/stats', authMiddleware, getLeadStats);
+router.get('/:id', authMiddleware, getLeadById);
+router.get('/', authMiddleware, getLeads);
+router.patch('/:id/status', authMiddleware, updateLeadStatus);
 
 module.exports = router;
