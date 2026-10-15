@@ -5,6 +5,7 @@ import {
   Home,
   Image,
   Users,
+  ContactRound,
   Palette,
   Settings,
   ExternalLink,
@@ -20,6 +21,11 @@ const navigation = [
     label: "Dashboard",
     path: "/",
     icon: LayoutDashboard,
+  },
+  {
+    label: "Leads",
+    path: "/leads",
+    icon: ContactRound,
   },
   {
     label: "Settings",

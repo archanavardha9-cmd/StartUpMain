@@ -11,6 +11,7 @@ import SpaceAudienceEditor from "./pages/home/SpaceAudienceEditor";
 import TrustResultsEditor from "./pages/home/TrustResultsEditor";
 import SpacesPricingEditor from "./pages/home/SpacesPricingEditor";
 import LocationCTAEditor from "./pages/home/LocationCTAEditor";
+import Lead from "./pages/Lead";
 
 function App() {
   return (
@@ -22,6 +23,8 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
+
+          <Route path="leads" element={<Lead />} />
 
           <Route path="settings" element={<Settings />} />
 
