@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Check, Clock, Wifi, Coffee, Users } from "lucide-react";
+import { Check, Clock } from "lucide-react";
+import { DynamicIcon } from "lucide-react/dynamic";
 
 const STORAGE_KEY = "startupCafeSpacesPricing";
 const UPDATE_EVENT = "spacesPricingUpdated";
@@ -161,13 +162,6 @@ const DEFAULT_DATA = {
       letterSpacing: 0,
     },
   },
-};
-
-const iconMap = {
-  clock: Clock,
-  wifi: Wifi,
-  coffee: Coffee,
-  users: Users,
 };
 
 const getDefaultPlan = (period, index) => {
@@ -373,8 +367,6 @@ const SpacesPricing = ({ onOpenBooking, previewData, isPreview = false }) => {
           {/* Core Amenities */}
           <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
             {data.amenities.map((amenity, index) => {
-              const Icon = iconMap[amenity.icon] || Clock;
-
               return (
                 <div
                   key={index}
@@ -384,7 +376,11 @@ const SpacesPricing = ({ onOpenBooking, previewData, isPreview = false }) => {
                     className="w-7 h-7 rounded-lg border border-black flex items-center justify-center text-black"
                     style={{ backgroundColor: amenity.iconBg }}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    <DynamicIcon
+                      name={amenity.icon}
+                      fallback={Clock}
+                      className="w-3.5 h-3.5"
+                    />
                   </div>
 
                   <span className="text-[11px] font-black text-black">

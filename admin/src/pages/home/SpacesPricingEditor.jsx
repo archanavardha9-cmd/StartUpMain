@@ -5,10 +5,8 @@ import {
   Trash2,
   GripVertical,
   Clock,
-  Wifi,
-  Coffee,
-  Users,
 } from "lucide-react";
+import { DynamicIcon, iconNames } from "lucide-react/dynamic";
 
 import Field from "../../components/Field";
 import TextInput from "../../components/TextInput";
@@ -180,12 +178,13 @@ const DEFAULT_DATA = {
   },
 };
 
-const iconOptions = [
-  { value: "clock", label: "Clock", Icon: Clock },
-  { value: "wifi", label: "WiFi", Icon: Wifi },
-  { value: "coffee", label: "Coffee", Icon: Coffee },
-  { value: "users", label: "Users", Icon: Users },
-];
+const MAX_VISIBLE_ICONS = 48;
+
+const formatIconLabel = (name) =>
+  name
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 
 const mergeData = (parsed = {}) => ({
   ...DEFAULT_DATA,
@@ -374,6 +373,7 @@ const SpacesPricingEditor = () => {
   const [openSection, setOpenSection] = useState("section");
   const [openPlan, setOpenPlan] = useState(null);
   const [openAmenity, setOpenAmenity] = useState(null);
+  const [amenityIconSearch, setAmenityIconSearch] = useState("");
   const [openGallery, setOpenGallery] = useState(null);
   const [savedMessage, setSavedMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -1002,7 +1002,7 @@ const SpacesPricingEditor = () => {
           {/* Amenities */}
           <SectionHeader
             title="Core Amenities"
-            description="Manage the four amenity badges shown above pricing."
+            description="Manage the amenity badges shown above pricing and choose from the full Lucide icon library."
             open={openSection === "amenities"}
             onClick={() =>
               setOpenSection(openSection === "amenities" ? null : "amenities")
@@ -1060,26 +1060,75 @@ const SpacesPricingEditor = () => {
                             />
                           </Field>
 
-                          <Field label="Icon">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                              {iconOptions.map(({ value, label, Icon }) => (
-                                <button
-                                  key={value}
-                                  type="button"
-                                  onClick={() =>
-                                    updateAmenity(index, "icon", value)
-                                  }
-                                  className={`p-3 rounded-xl border-2 border-black flex flex-col items-center gap-2 text-xs font-black transition-all ${
-                                    amenity.icon === value
-                                      ? "bg-[#FFDE4D] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-                                      : "bg-white hover:bg-[#FFFDF9]"
-                                  }`}
-                                >
-                                  <Icon className="w-5 h-5" />
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
+                          <Field
+                            label="Icon"
+                            description="Search the full Lucide icon library."
+                          >
+                            <input
+                              type="search"
+                              value={amenityIconSearch}
+                              onChange={(event) =>
+                                setAmenityIconSearch(event.target.value)
+                              }
+                              placeholder="Search icons (e.g. leaf, laptop, sun)"
+                              aria-label="Search Lucide icons"
+                              className="w-full px-3.5 py-3 bg-white border-2 border-black rounded-xl text-sm font-semibold outline-none placeholder:text-black/40 focus:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
+                            />
+                            {(() => {
+                              const query = amenityIconSearch
+                                .trim()
+                                .toLowerCase();
+                              const filteredIcons = iconNames.filter((name) =>
+                                formatIconLabel(name)
+                                  .toLowerCase()
+                                  .includes(query),
+                              );
+                              const visibleIcons = filteredIcons.slice(
+                                0,
+                                MAX_VISIBLE_ICONS,
+                              );
+
+                              return (
+                                <>
+                                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 mt-3 max-h-64 overflow-y-auto p-1">
+                                    {visibleIcons.map((name) => (
+                                      <button
+                                        key={name}
+                                        type="button"
+                                        title={formatIconLabel(name)}
+                                        aria-label={`Select ${formatIconLabel(name)} icon`}
+                                        aria-pressed={amenity.icon === name}
+                                        onClick={() =>
+                                          updateAmenity(index, "icon", name)
+                                        }
+                                        className={`min-h-16 p-2 rounded-xl border-2 border-black flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition-all ${
+                                          amenity.icon === name
+                                            ? "bg-[#FFDE4D] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                                            : "bg-white hover:bg-[#FFFDF9]"
+                                        }`}
+                                      >
+                                        <DynamicIcon
+                                          name={name}
+                                          fallback={Clock}
+                                          className="w-5 h-5 shrink-0"
+                                        />
+                                        <span className="w-full truncate text-center">
+                                          {formatIconLabel(name)}
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <p className="text-xs text-black/50 font-semibold mt-2">
+                                    {filteredIcons.length === 0
+                                      ? "No icons found."
+                                      : filteredIcons.length >
+                                          MAX_VISIBLE_ICONS
+                                        ? `Showing ${MAX_VISIBLE_ICONS} of ${filteredIcons.length} icons. Refine your search to see more.`
+                                        : `${filteredIcons.length} icon${filteredIcons.length === 1 ? "" : "s"} found.`}
+                                  </p>
+                                </>
+                              );
+                            })()}
                           </Field>
 
                           <ColorControl
