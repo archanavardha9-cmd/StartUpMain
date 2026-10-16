@@ -1,6 +1,10 @@
-import { createContext, useContext, useState } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 
-const AuthContext = createContext(null);
+import { AuthContext } from "./authContextInstance";
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(
@@ -17,29 +21,28 @@ export function AuthProvider({ children }) {
     }
   });
 
-  const login = (token, admin) => {
+  const login = useCallback((token, admin) => {
     sessionStorage.setItem("adminToken", token);
     sessionStorage.setItem("adminUser", JSON.stringify(admin));
+    localStorage.removeItem("adminToken");
     setToken(token);
     setAdmin(admin);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     sessionStorage.removeItem("adminToken");
     sessionStorage.removeItem("adminUser");
+    localStorage.removeItem("adminToken");
     setToken(null);
     setAdmin(null);
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ token, admin, login, logout, isAuthenticated: Boolean(token) }),
+    [token, admin, login, logout]
+  );
 
   return (
-    <AuthContext.Provider
-      value={{ token, admin, login, logout, isAuthenticated: Boolean(token) }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  return useContext(AuthContext);
 }

@@ -13,6 +13,87 @@ const createToken = (admin) => {
   );
 };
 
+const getProfile = (req, res) => {
+  return res.status(200).json({
+    success: true,
+    admin: {
+      id: req.admin.id,
+      email: req.admin.email,
+    },
+  });
+};
+
+const updateEmail = async (req, res, next) => {
+  try {
+    const { email, currentPassword } = req.body || {};
+    const normalizedEmail =
+      typeof email === 'string' ? email.trim().toLowerCase() : '';
+
+    if (
+      typeof currentPassword !== 'string' ||
+      !currentPassword ||
+      !normalizedEmail ||
+      normalizedEmail.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid email address and current password are required.',
+      });
+    }
+
+    const admin = await Admin.findById(req.admin.id).select('+password');
+
+    if (!admin || !(await bcrypt.compare(currentPassword, admin.password))) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect.',
+      });
+    }
+
+    if (normalizedEmail === admin.email) {
+      return res.status(400).json({
+        success: false,
+        message: 'The new email address matches your current email address.',
+      });
+    }
+
+    const existingAdmin = await Admin.exists({
+      email: normalizedEmail,
+      _id: { $ne: admin._id },
+    });
+
+    if (existingAdmin) {
+      return res.status(409).json({
+        success: false,
+        message: 'An admin account already uses this email address.',
+      });
+    }
+
+    admin.email = normalizedEmail;
+    admin.tokenVersion += 1;
+    await admin.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Email updated successfully. Please log in again.',
+      admin: {
+        id: admin._id,
+        email: admin.email,
+      },
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'An admin account already uses this email address.',
+      });
+    }
+
+    return next(error);
+  }
+};
+
 // Admin login
 const login = async (req, res, next) => {
   try {
@@ -58,7 +139,7 @@ const login = async (req, res, next) => {
 // Change password
 const changePassword = async (req, res, next) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword } = req.body || {};
 
     if (
       typeof currentPassword !== 'string' ||
@@ -76,6 +157,13 @@ const changePassword = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'New password must be at least 12 characters long.',
+      });
+    }
+
+    if (newPassword.length > 128) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be no more than 128 characters long.',
       });
     }
 
@@ -110,6 +198,8 @@ const changePassword = async (req, res, next) => {
 };
 
 module.exports = {
+  getProfile,
   login,
+  updateEmail,
   changePassword,
 };

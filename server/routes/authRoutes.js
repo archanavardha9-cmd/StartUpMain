@@ -1,7 +1,12 @@
  const express = require('express');
 const router = express.Router();
 
-const { login, changePassword } = require('../controllers/authController');
+const {
+  getProfile,
+  login,
+  updateEmail,
+  changePassword,
+} = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 
 router.get('/test', (req, res) => {
@@ -12,6 +17,8 @@ router.get('/test', (req, res) => {
 });
 
 router.post('/login', login);
+router.get('/profile', authMiddleware, getProfile);
+router.patch('/profile/email', authMiddleware, updateEmail);
 router.patch('/change-password', authMiddleware, changePassword);
 
 module.exports = router;

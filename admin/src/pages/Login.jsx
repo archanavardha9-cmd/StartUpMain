@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import {
   Eye,
   EyeOff,
@@ -12,11 +12,14 @@ import {
 } from "lucide-react";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://localhost:5000";
 
 export default function Login() {
   const { login, isAuthenticated } = useAuth();
   const location = useLocation();
+  const notice = location.state?.message;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -149,6 +152,14 @@ export default function Login() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {notice && (
+              <div
+                role="status"
+                className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+              >
+                {notice}
+              </div>
+            )}
             {error && (
               <div
                 role="alert"

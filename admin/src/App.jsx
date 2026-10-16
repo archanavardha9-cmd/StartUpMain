@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
 import Settings from "./pages/Settings";
+import HeaderEditor from "./pages/HeaderEditor";
+import FooterEditor from "./pages/FooterEditor";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -27,6 +29,8 @@ function App() {
           <Route path="leads" element={<Lead />} />
 
           <Route path="settings" element={<Settings />} />
+          <Route path="header" element={<HeaderEditor />} />
+          <Route path="footer" element={<FooterEditor />} />
 
           <Route path="home/hero" element={<HeroEditor />} />
           <Route
