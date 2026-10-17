@@ -1,17 +1,21 @@
 const mongoose = require('mongoose');
 
 const connectDB = async () => {
-  try {
-    const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/startup_cafe';
-    const conn = await mongoose.connect(mongoURI);
-    console.log(`[MongoDB] Database connected successfully: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`[MongoDB Error] Connection failed: ${error.message}`);
-    // Optional: Keep process alive or throw depending on environment
-    if (process.env.NODE_ENV === 'production') {
-      process.exit(1);
-    }
+  const mongoURI =
+    process.env.MONGO_URI ||
+    (process.env.NODE_ENV === 'production'
+      ? ''
+      : 'mongodb://localhost:27017/startup_cafe');
+
+  if (!mongoURI) {
+    throw new Error('MONGO_URI must be configured in production.');
   }
+
+  const conn = await mongoose.connect(mongoURI);
+  console.log(
+    `[MongoDB] Database connected successfully: ${conn.connection.host}`
+  );
+  return conn;
 };
 
 module.exports = connectDB;

@@ -15,6 +15,7 @@ import TypographyControls from "../../components/TypographyControls";
 import ImageUploader from "../../components/ImageUploader";
 import EditorActions from "../../components/EditorActions";
 import SpacesPricing from "../../../../client/src/components/sections/SpacesPricing";
+import { getAdminAuthHeaders } from "../../services/adminAuth";
 
 const STORAGE_KEY = "startupCafeSpacesPricing";
 const UPDATE_EVENT = "spacesPricingUpdated";
@@ -596,6 +597,7 @@ const SpacesPricingEditor = () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          ...getAdminAuthHeaders(),
         },
         body: JSON.stringify({ content }),
       });
@@ -638,6 +640,7 @@ const SpacesPricingEditor = () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          ...getAdminAuthHeaders(),
         },
         body: JSON.stringify({ content: resetData }),
       });

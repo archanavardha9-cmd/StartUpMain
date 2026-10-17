@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import LocationCTA from "../../../../client/src/components/sections/LocationCTA";
 import { ToastProvider } from "../../../../client/src/components/common/Toast";
 import EditorActions from "../../components/EditorActions";
+import { getAdminAuthHeaders } from "../../services/adminAuth";
 
 const STORAGE_KEY = "startupCafeLocationCTA";
 const STORAGE_EVENT = "startupCafeLocationCTAUpdated";
@@ -518,6 +519,7 @@ const LocationCTAEditor = () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          ...getAdminAuthHeaders(),
         },
         body: JSON.stringify({ content: dataToSave }),
       });
@@ -566,6 +568,7 @@ const LocationCTAEditor = () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          ...getAdminAuthHeaders(),
         },
         body: JSON.stringify({ content: resetData }),
       });

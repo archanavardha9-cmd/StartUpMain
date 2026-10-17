@@ -50,6 +50,7 @@ export default function Settings() {
   const [email, setEmail] = useState("");
   const [currentEmailPassword, setCurrentEmailPassword] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [emailNotice, setEmailNotice] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -93,21 +94,19 @@ export default function Settings() {
   const handleEmailUpdate = async (event) => {
     event.preventDefault();
     setEmailError("");
+    setEmailNotice("");
     setEmailLoading(true);
 
     try {
-      await requestAuthApi("/profile/email", token, {
+      const result = await requestAuthApi("/profile/email", token, {
         method: "PATCH",
         body: JSON.stringify({
           email,
           currentPassword: currentEmailPassword,
         }),
       });
-      logout();
-      navigate("/login", {
-        replace: true,
-        state: { message: "Email updated. Sign in again using your new email." },
-      });
+      setEmailNotice(result.message);
+      setCurrentEmailPassword("");
     } catch (error) {
       if (isExpiredSession(error)) {
         logout();
@@ -209,7 +208,8 @@ export default function Settings() {
           <div>
             <h2 className="text-xl font-black">Email address</h2>
             <p className="mt-1 text-sm font-semibold text-black/55">
-              Changing your email signs you out on all devices.
+              Confirm ownership of your new address. You&apos;ll be signed out
+              on all devices after verification.
             </p>
           </div>
         </div>
@@ -217,6 +217,11 @@ export default function Settings() {
           {emailError && (
             <p role="alert" className="rounded-xl border-2 border-red-700 bg-red-50 p-3 text-sm font-semibold text-red-800">
               {emailError}
+            </p>
+          )}
+          {emailNotice && (
+            <p role="status" className="rounded-xl border-2 border-green-700 bg-green-50 p-3 text-sm font-semibold text-green-800">
+              {emailNotice}
             </p>
           )}
           <label className="block space-y-1.5 text-sm font-bold">

@@ -15,6 +15,7 @@ import ColorControl from "../../components/ColorControl";
 import TypographyControls from "../../components/TypographyControls";
 import EditorActions from "../../components/EditorActions";
 import SpaceAudience from "../../../../client/src/components/sections/SpaceAudience";
+import { getAdminAuthHeaders } from "../../services/adminAuth";
 
 const STORAGE_KEY = "startupCafeSpaceAudience";
 
@@ -316,6 +317,7 @@ const saveSpaceAudience = async (data) => {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
+      ...getAdminAuthHeaders(),
     },
     body: JSON.stringify(data),
   });

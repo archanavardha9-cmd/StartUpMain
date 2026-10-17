@@ -4,9 +4,14 @@
   "description": "Backend API for Startup Cafe Lead Generation",
   "main": "server.js",
   "type": "commonjs",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "email:verify": "node scripts/verifyEmail.js",
+    "test": "node --test"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -19,7 +24,6 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.4.1",
-    "nodemailer": "^9.0.3",
-    "resend": "^6.18.0"
+    "nodemailer": "^10.1.2"
   }
 }

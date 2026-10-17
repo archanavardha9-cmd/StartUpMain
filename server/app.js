@@ -7,8 +7,6 @@ const errorHandler = require('./middleware/errorHandler');
 const cmsRoutes = require('./routes/cmsRoutes');
 const authRoutes = require('./routes/authRoutes');
 
-console.log("CMS ROUTES LOADED");
-
 const app = express();
 
 // Security HTTP headers
@@ -23,7 +21,10 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://new.startupcafe.co.in',
   'https://e.startupcafe.co.in',
-  ...(process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : []),
+  ...(process.env.ADMIN_URL ? [new URL(process.env.ADMIN_URL).origin] : []),
+  ...(process.env.CLIENT_URL
+    ? process.env.CLIENT_URL.split(',').map((origin) => origin.trim())
+    : []),
 ].filter(Boolean);
 
 app.use(
@@ -48,8 +49,6 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use('/api/leads', leadRoutes);
 app.use('/api/cms', cmsRoutes);
 app.use('/api/auth', authRoutes);
-
-console.log('Auth routes registered');
 
 // Health check endpoint
 app.get('/health', (req, res) => {

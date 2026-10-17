@@ -7,6 +7,7 @@ import ColorControl from "../../components/ColorControl";
 import TypographyControls from "../../components/TypographyControls";
 import EditorActions from "../../components/EditorActions";
 import TrustResults from "../../../../client/src/components/sections/TrustResults";
+import { getAdminAuthHeaders } from "../../services/adminAuth";
 
 const STORAGE_KEY = "startupCafeTrustResults";
 
@@ -535,6 +536,7 @@ const TrustResultsEditor = () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          ...getAdminAuthHeaders(),
         },
         body: JSON.stringify(formData),
       });
@@ -571,6 +573,7 @@ const TrustResultsEditor = () => {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          ...getAdminAuthHeaders(),
         },
         body: JSON.stringify(resetData),
       });

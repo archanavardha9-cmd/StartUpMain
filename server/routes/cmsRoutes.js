@@ -7,6 +7,7 @@ const {
   getCmsImage,
   uploadCmsImage,
 } = require("../controllers/cmsController");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -26,6 +27,7 @@ router.get("/test", (req, res) => {
 
 router.post(
   "/images",
+  authMiddleware,
   imageUploadLimiter,
   express.raw({
     type: ["image/jpeg", "image/png", "image/webp"],
@@ -38,6 +40,6 @@ router.get("/images/:imageId", getCmsImage);
 
 router.get("/:section", getSectionContent);
 
-router.put("/:section", updateSectionContent);
+router.put("/:section", authMiddleware, updateSectionContent);
 
 module.exports = router;

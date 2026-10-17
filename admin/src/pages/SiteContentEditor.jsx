@@ -17,6 +17,7 @@ import ColorControl from "../components/ColorControl";
 import TypographyControls from "../components/TypographyControls";
 import ButtonEditor from "../components/ButtonEditor";
 import EditorActions from "../components/EditorActions";
+import { getAdminAuthHeaders } from "../services/adminAuth";
 
 // ============================================================
 // API CONFIGURATION
@@ -423,6 +424,7 @@ const SettingsEditor = ({ section }) => {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
+        ...getAdminAuthHeaders(),
       },
       body: JSON.stringify({
         content: normalized,

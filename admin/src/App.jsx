@@ -6,6 +6,9 @@ import Settings from "./pages/Settings";
 import HeaderEditor from "./pages/HeaderEditor";
 import FooterEditor from "./pages/FooterEditor";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import VerifyEmail from "./pages/VerifyEmail";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import HeroEditor from "./pages/home/HeroEditor";
@@ -20,6 +23,9 @@ function App() {
     <Routes>
       {/* Public login page */}
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
 
       {/* Protected admin pages */}
       <Route element={<ProtectedRoute />}>

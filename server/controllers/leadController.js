@@ -1,6 +1,6 @@
 const Lead = require('../models/Lead');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
-const { sendLeadNotificationEmail } = require('../utils/email');
+const emailService = require('../utils/email');
 
 /**
  * @desc    Create a new Lead/Inquiry
@@ -35,8 +35,8 @@ const createLead = async (req, res, next) => {
     });
 
     // Send notification without delaying the successful submission response.
-    Promise.resolve(sendLeadNotificationEmail(lead)).catch((emailError) => {
-      console.error('Lead notification email failed:', emailError.message);
+    Promise.resolve(emailService.sendLeadNotificationEmail(lead)).catch((error) => {
+      emailService.logEmailFailure('lead notification', error);
     });
 
     return successResponse(

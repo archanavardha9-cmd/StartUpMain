@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Image as ImageIcon, Upload, X } from 'lucide-react';
 import Field from './Field';
+import { getAdminAuthHeaders } from '../services/adminAuth';
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_URL || 'http://localhost:5000'
@@ -29,6 +30,7 @@ const ImageUploader = ({
         method: 'POST',
         headers: {
           'Content-Type': file.type,
+          ...getAdminAuthHeaders(),
         },
         body: file,
       });

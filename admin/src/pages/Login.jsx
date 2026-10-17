@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import {
   Eye,
@@ -204,6 +204,12 @@ export default function Login() {
                 >
                   Password
                 </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-sm font-semibold text-[#a72b6c] transition hover:text-[#8f2059]"
+                >
+                  Forgot Password?
+                </Link>
               </div>
 
               <div className="relative">

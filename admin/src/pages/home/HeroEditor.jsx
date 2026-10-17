@@ -8,6 +8,7 @@ import ColorControl from '../../components/ColorControl';
 import TypographyControls from '../../components/TypographyControls';
 import ImageUploader from '../../components/ImageUploader';
 import EditorActions from '../../components/EditorActions';
+import { getAdminAuthHeaders } from '../../services/adminAuth';
 import Hero from '../../../../client/src/components/sections/Hero';
 
 const STORAGE_KEY = 'startupCafeHero';
@@ -298,6 +299,7 @@ const HeroEditor = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...getAdminAuthHeaders(),
         },
         body: JSON.stringify(formData),
       });
@@ -337,6 +339,7 @@ const HeroEditor = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...getAdminAuthHeaders(),
         },
         body: JSON.stringify(defaults),
       });
