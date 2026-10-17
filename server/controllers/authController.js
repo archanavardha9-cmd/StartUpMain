@@ -7,7 +7,7 @@ const emailService = require('../utils/email');
 const TOKEN_EXPIRATION_MS = 30 * 60 * 1000;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RESET_LINK_SENT_MESSAGE =
-  'Password reset sent to this mail.';
+  'The Password reset link has been sent to this email address.';
 const UNREGISTERED_ADMIN_EMAIL_MESSAGE =
   'This email address is not registered as an administrator. Please check the email address and try again.';
 const RESET_EMAIL_DELIVERY_ERROR_MESSAGE =
